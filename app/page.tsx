@@ -1,65 +1,275 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import TopBar from "./components/topbar";
+
+const SUBJECTS = [
+  { name: "MATH", image: "/ui/homepage/math.png" },
+  { name: "ENGLISH", image: "/ui/homepage/english.png" },
+  { name: "FILIPINO", image: "/ui/homepage/filipino.png" },
+  { name: "SCIENCE", image: "/ui/homepage/science.png" },
+];
+
+export default function HomePage() {
+  const [studentName, setStudentName] = useState("Student");
+  const [studentAvatar, setStudentAvatar] = useState(
+    "/characters/portraits/warrior.png"
+  );
+  const [leftCharacter, setLeftCharacter] = useState(
+    "/ui/assessment/Guide-Char.png"
+  );
+  const [rightCharacter, setRightCharacter] = useState(
+    "/ui/assessment/Guide-Char.png"
+  );
+
+  const router = useRouter();
+
+  function logout() {
+    localStorage.removeItem("alitaUser");
+    localStorage.removeItem("studentId");
+    localStorage.removeItem("teacherId");
+    router.push("/login");
+  }
+
+  useEffect(() => {
+    const user = localStorage.getItem("alitaUser");
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    const savedProfile = localStorage.getItem("alitaStudentProfile");
+
+    if (savedProfile) {
+      const profile = JSON.parse(savedProfile);
+      setStudentName(profile.fullName || "Student");
+      setStudentAvatar(profile.avatar || "/characters/portraits/warrior.png");
+      setLeftCharacter(profile.fullCharacter || "/characters/full/warrior.png");
+      setRightCharacter(profile.fullCharacter || "/characters/full/warrior.png");
+    }
+  }, [router]);
+
+  function openSubject() {
+    router.push("/assessment");
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div
+      className="relative min-h-screen overflow-hidden bg-cover bg-center text-[#2c1b10]"
+      style={{ backgroundImage: "url('/ui/homepage/home-bg.png')" }}
+    >
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "rgba(0,0,0,0.15)" }}
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-40"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(255,255,255,0.10), transparent)",
+        }}
+      />
+
+      <div className="relative z-10">
+        <TopBar
+          studentName={studentName}
+          studentPortrait={studentAvatar}
+          onLogout={logout}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        <main className="relative mx-auto flex min-h-[calc(100vh-90px)] max-w-7xl items-center justify-center px-4 py-8 md:px-8">
+          <div
+            className="absolute left-4 bottom-8 hidden lg:block"
+            style={{ pointerEvents: "none" }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <div
+              style={{
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "8px",
+                  width: "96px",
+                  height: "24px",
+                  borderRadius: "999px",
+                  background: "rgba(0,0,0,0.25)",
+                  filter: "blur(8px)",
+                  animation: "shadowBounce 1.8s ease-in-out infinite",
+                }}
+              />
+              <img
+                src={leftCharacter}
+                alt="Left character"
+                className="relative z-10 h-[220px] w-auto object-contain"
+                style={{
+                  imageRendering: "pixelated",
+                  animation: "heroBounce 1.8s ease-in-out infinite",
+                  filter: "drop-shadow(0 10px 12px rgba(0,0,0,0.25))",
+                }}
+              />
+            </div>
+          </div>
+
+          <div
+            className="absolute right-4 bottom-8 hidden lg:block"
+            style={{ pointerEvents: "none" }}
           >
-            Documentation
-          </a>
-        </div>
-      </main>
+            <div
+              style={{
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "8px",
+                  width: "96px",
+                  height: "24px",
+                  borderRadius: "999px",
+                  background: "rgba(0,0,0,0.25)",
+                  filter: "blur(8px)",
+                  animation: "shadowBounce 1.8s ease-in-out infinite",
+                }}
+              />
+              <img
+                src={rightCharacter}
+                alt="Right character"
+                className="relative z-10 h-[220px] w-auto object-contain"
+                style={{
+                  transform: "scaleX(-1)",
+                  imageRendering: "pixelated",
+                  animation: "heroBounce 1.8s ease-in-out infinite",
+                  filter: "drop-shadow(0 10px 12px rgba(0,0,0,0.25))",
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="w-full max-w-[860px] text-center">
+            <div className="mb-8">
+              <h1
+                className="text-4xl font-black tracking-wide md:text-6xl"
+                style={{
+                  color: "#f4f0dd",
+                  textShadow: "3px 3px 0 #3f2a1b",
+                }}
+              >
+                WELCOME TO ALITA
+              </h1>
+              <p
+                className="mt-3 text-sm font-bold md:text-xl"
+                style={{
+                  color: "#f8e9c8",
+                  textShadow: "2px 2px 0 #5b341c",
+                }}
+              >
+                Start your learning adventure
+              </p>
+            </div>
+
+            <button
+              onClick={() => router.push("/assessment")}
+              className="mb-10 transition duration-150 hover:scale-105 active:scale-90"
+              style={{
+                background: "transparent",
+                border: "none",
+                animation: "buttonBounce 0.95s ease-in-out infinite",
+              }}
+            >
+              <img
+                src="/ui/homepage/start.png"
+                alt="Start Quest"
+                className="w-[300px] object-contain md:w-[380px]"
+                style={{
+                  imageRendering: "pixelated",
+                  filter: "drop-shadow(0 14px 0 rgba(0,0,0,0.65))",
+                }}
+              />
+            </button>
+
+            <div className="mx-auto grid max-w-[760px] grid-cols-2 gap-5 md:gap-6">
+              {SUBJECTS.map((subject, index) => (
+                <button
+                  key={subject.name}
+                  onClick={openSubject}
+                  className="group relative"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                  }}
+                >
+                  <img
+                    src={subject.image}
+                    alt={subject.name}
+                    className="w-full h-auto object-contain transition duration-200 group-hover:scale-105 group-active:scale-95"
+                    style={{
+                      imageRendering: "pixelated",
+                      filter: "drop-shadow(0 14px 0 rgba(0,0,0,0.65))",
+                      animation: "subjectBounce 2.8s ease-in-out infinite",
+                      animationDelay: `${index * 0.18}s`,
+                      transformOrigin: "center bottom",
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <style jsx global>{`
+        @keyframes heroBounce {
+          0%,
+          100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-12px);
+          }
+        }
+
+        @keyframes shadowBounce {
+          0%,
+          100% {
+            transform: scaleX(1);
+            opacity: 0.28;
+          }
+          50% {
+            transform: scaleX(0.78);
+            opacity: 0.12;
+          }
+        }
+
+        @keyframes buttonBounce {
+          0%,
+          100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-10px);
+          }
+        }
+
+        @keyframes subjectBounce {
+          0%,
+          100% {
+            transform: translateY(0px) scale(1);
+          }
+          50% {
+            transform: translateY(-8px) scale(1.03);
+          }
+        }
+      `}</style>
     </div>
   );
 }
