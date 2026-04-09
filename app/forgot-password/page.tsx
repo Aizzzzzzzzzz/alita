@@ -25,8 +25,10 @@ export default function ForgotPasswordPage() {
     setMessage("");
 
     try {
+      const redirectUrl = `${window.location.origin}/reset-password`;
+
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: "https://alita-pi.vercel.app/reset-password",
+        redirectTo: redirectUrl,
       });
 
       if (error) {
