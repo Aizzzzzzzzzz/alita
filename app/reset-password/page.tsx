@@ -17,28 +17,73 @@ export default function ResetPasswordPage() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-  let mounted = true;
+    let mounted = true;
 
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange((event, session) => {
-    if (event === "PASSWORD_RECOVERY" || session) {
-      if (mounted) setIsReady(true);
+    async function prepareRecoverySession() {
+      try {
+        const hash = window.location.hash.startsWith("#")
+          ? window.location.hash.substring(1)
+          : "";
+
+        const hashParams = new URLSearchParams(hash);
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
+        const type = hashParams.get("type");
+
+        if (type === "recovery" && accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (!error && mounted) {
+            setIsReady(true);
+            setMessage("");
+            return;
+          }
+        }
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session && mounted) {
+          setIsReady(true);
+          setMessage("");
+          return;
+        }
+
+        if (mounted) {
+          setIsReady(false);
+          setMessage("Open this page using the reset link from your email.");
+          setMessageColor("#7f1d1d");
+        }
+      } catch (error) {
+        console.error("Recovery session error:", error);
+        if (mounted) {
+          setIsReady(false);
+          setMessage("Invalid or expired reset link.");
+          setMessageColor("#7f1d1d");
+        }
+      }
     }
-  });
 
-  // force check once
-  supabase.auth.getSession().then(({ data }) => {
-    if (data?.session && mounted) {
-      setIsReady(true);
-    }
-  });
+    prepareRecoverySession();
 
-  return () => {
-    mounted = false;
-    subscription.unsubscribe();
-  };
-}, []);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || session) && mounted) {
+        setIsReady(true);
+        setMessage("");
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   async function updatePassword() {
     if (!isReady) {
