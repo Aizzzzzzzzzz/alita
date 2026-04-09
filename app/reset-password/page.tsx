@@ -15,7 +15,34 @@ export default function ResetPasswordPage() {
   const [messageColor, setMessageColor] = useState("#7f1d1d");
   const [isLoading, setIsLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    async function handleHashSession() {
+      if (typeof window === "undefined") return;
 
+      const hash = window.location.hash;
+
+      if (!hash) return;
+
+      const params = new URLSearchParams(hash.substring(1));
+
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+
+      if (access_token && refresh_token) {
+        const { error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+
+        if (!error) {
+          setIsReady(true);
+          setMessage("");
+        }
+      }
+    }
+
+    handleHashSession();
+  }, []);
   useEffect(() => {
     let mounted = true;
 
