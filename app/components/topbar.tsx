@@ -10,11 +10,12 @@ type TopBarProps = {
   onLogout: () => void;
 };
 
+const DEFAULT_NAME = "Player";
+const DEFAULT_PORTRAIT = "/characters/portraits/warrior.png";
+
 /**
  * PortraitCircle
  * Displays the student's portrait inside a circular frame.
- * If the src is an image path, it shows the image.
- * Otherwise, it shows the value as text/emoji fallback.
  */
 function PortraitCircle({
   src,
@@ -27,20 +28,19 @@ function PortraitCircle({
   className?: string;
   imgClassName?: string;
 }) {
-  // Check if the portrait source is an image path
-  const isImage = typeof src === "string" && src.startsWith("/");
+  const safeSrc =
+    typeof src === "string" && src.startsWith("/") ? src : DEFAULT_PORTRAIT;
 
   return (
     <div
       className={`flex items-center justify-center overflow-hidden rounded-full border-[4px] border-[#7a4a28] bg-[#f8ebc8] shadow-[0_6px_12px_rgba(0,0,0,0.2)] ${className}`}
     >
-      {isImage ? (
-        <img src={src} alt={alt} className={`object-cover ${imgClassName}`} />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-lg">
-          {src}
-        </div>
-      )}
+      <img
+        src={safeSrc}
+        alt={alt}
+        className={`object-cover ${imgClassName}`}
+        style={{ imageRendering: "pixelated" }}
+      />
     </div>
   );
 }
@@ -48,46 +48,70 @@ function PortraitCircle({
 /**
  * TopBar
  * Main navigation bar for the student pages.
- * Shows:
- * - ALITA logo and title
- * - Desktop navigation buttons
- * - Student dropdown menu
- * - Mobile hamburger navigation
  */
 export default function TopBar({
   studentName,
   studentPortrait,
   onLogout,
 }: TopBarProps) {
-  // Next.js router for page navigation
   const router = useRouter();
-
-  // Get current page path so active nav button can be highlighted
   const pathname = usePathname();
-
-  // Reference for the profile dropdown area
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-
-  // Reference for the mobile navigation area
   const mobileNavRef = useRef<HTMLDivElement | null>(null);
 
-  // State for opening/closing the profile dropdown
   const [menuOpen, setMenuOpen] = useState(false);
-
-  // State for opening/closing the mobile navigation
   const [navOpen, setNavOpen] = useState(false);
+  const [displayName, setDisplayName] = useState(studentName || DEFAULT_NAME);
+  const [displayPortrait, setDisplayPortrait] = useState(
+    studentPortrait && studentPortrait.startsWith("/")
+      ? studentPortrait
+      : DEFAULT_PORTRAIT
+  );
 
-  /**
-   * useEffect
-   * Handles closing the dropdown menu and mobile menu
-   * when the user clicks outside of them.
-   */
   useEffect(() => {
-    /**
-     * handleClickOutside
-     * Detects clicks outside the dropdown and mobile nav,
-     * then closes them automatically.
-     */
+    function loadProfile() {
+      const saved = localStorage.getItem("alitaStudentProfile");
+
+      if (saved) {
+        try {
+          const profile = JSON.parse(saved);
+
+          setDisplayName(profile.fullName || studentName || DEFAULT_NAME);
+          setDisplayPortrait(
+            typeof profile.avatar === "string" && profile.avatar.startsWith("/")
+              ? profile.avatar
+              : studentPortrait && studentPortrait.startsWith("/")
+              ? studentPortrait
+              : DEFAULT_PORTRAIT
+          );
+          return;
+        } catch {}
+      }
+
+      setDisplayName(studentName || DEFAULT_NAME);
+      setDisplayPortrait(
+        studentPortrait && studentPortrait.startsWith("/")
+          ? studentPortrait
+          : DEFAULT_PORTRAIT
+      );
+    }
+
+    loadProfile();
+
+    function handleStorageChange() {
+      loadProfile();
+    }
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("focus", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("focus", handleStorageChange);
+    };
+  }, [studentName, studentPortrait]);
+
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
 
@@ -101,32 +125,24 @@ export default function TopBar({
     }
 
     document.addEventListener("mousedown", handleClickOutside);
-
-    // Cleanup event listener when component unmounts
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Base style shared by desktop nav buttons
   const navBase =
     "inline-flex h-[56px] items-center justify-center rounded-[18px] border-[4px] border-[#5b341c] px-5 font-black text-[#5b341c]";
 
-  // Default desktop nav button style
   const navBtn =
     `${navBase} bg-[#f6d28b] shadow-[4px_4px_0_#8a5a35] transition-colors duration-150 hover:bg-[#ffe7a8]`;
 
-  // Active desktop nav button style
   const navBtnActive =
     `${navBase} bg-[#ffe7a8] shadow-[4px_4px_0_#8a5a35]`;
 
-  // Default mobile nav button style
   const mobileBtn =
     "block w-full rounded-[16px] border-[4px] border-[#5b341c] px-4 py-3 text-center font-black text-[#5b341c] bg-[#f6d28b] shadow-[4px_4px_0_#8a5a35] hover:bg-[#ffe7a8]";
 
-  // Active mobile nav button style
   const mobileBtnActive =
     "block w-full rounded-[16px] border-[4px] border-[#5b341c] px-4 py-3 text-center font-black text-[#5b341c] bg-[#ffe7a8] shadow-[4px_4px_0_#8a5a35]";
 
-  // Navigation items shown in both desktop and mobile menus
   const navItems = [
     { href: "/", label: "HOME" },
     { href: "/assessment", label: "QUESTS" },
@@ -138,7 +154,6 @@ export default function TopBar({
     <header className="border-b-[4px] border-[#5b341c] bg-[#d7b37a] shadow-[0_6px_0_#8a5a35]">
       <div className="mx-auto max-w-7xl px-4 py-4 lg:px-8">
         <div className="flex items-center justify-between gap-4">
-          {/* Left side: logo and system title */}
           <div className="flex min-w-0 items-center gap-3">
             <img
               src="/images/final-logo.png"
@@ -156,7 +171,6 @@ export default function TopBar({
             </div>
           </div>
 
-          {/* Desktop navigation buttons */}
           <nav className="hidden lg:flex items-center gap-3">
             {navItems.map((item) => (
               <Link
@@ -169,26 +183,23 @@ export default function TopBar({
             ))}
           </nav>
 
-          {/* Right side: profile dropdown and mobile menu button */}
           <div className="flex items-center gap-3">
-            {/* Student profile dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="flex items-center gap-3 rounded-[18px] border-[4px] border-[#5b341c] bg-[#ffe7a8] px-3 py-2 font-black text-[#5b341c] shadow-[4px_4px_0_#8a5a35] lg:px-4"
               >
                 <PortraitCircle
-                  src={studentPortrait}
+                  src={displayPortrait}
                   alt="Student"
                   className="h-10 w-10 lg:h-11 lg:w-11"
                   imgClassName="h-full w-full"
                 />
-                <span className="hidden lg:inline max-w-32 truncate">
-                  {studentName}
+                <span className="hidden max-w-32 truncate lg:inline">
+                  {displayName}
                 </span>
               </button>
 
-              {/* Dropdown menu content */}
               {menuOpen && (
                 <div className="absolute right-0 top-16 z-50 w-56 overflow-hidden rounded-[18px] border-[4px] border-[#5b341c] bg-[#fff3cf] shadow-[6px_6px_0_#8a5a35]">
                   <button
@@ -214,7 +225,6 @@ export default function TopBar({
               )}
             </div>
 
-            {/* Mobile hamburger navigation */}
             <div className="relative lg:hidden" ref={mobileNavRef}>
               <button
                 onClick={() => setNavOpen(!navOpen)}
@@ -223,7 +233,6 @@ export default function TopBar({
                 ☰
               </button>
 
-              {/* Mobile nav dropdown */}
               {navOpen && (
                 <div className="absolute right-0 top-16 z-50 w-64 rounded-[20px] border-[4px] border-[#5b341c] bg-[#fff3cf] p-4 shadow-[6px_6px_0_#8a5a35]">
                   <div className="flex flex-col gap-3">

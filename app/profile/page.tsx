@@ -314,6 +314,7 @@ export default function ProfilePage() {
           .from("students")
           .update({
             avatar: character.portrait,
+            full_character: character.full,
           })
           .eq("id", currentStudentId);
       }
@@ -435,13 +436,12 @@ export default function ProfilePage() {
                         type="button"
                         onClick={() => unlocked && saveCharacter(character)}
                         disabled={!unlocked || isSaving}
-                        className={`character-card group rounded-[20px] border-[3px] p-3 shadow-sm transition duration-200 ${
-                          isSelected
+                        className={`character-card group rounded-[20px] border-[3px] p-3 shadow-sm transition duration-200 ${isSelected
                             ? "border-[#1ca83c] bg-[#eef8d4] shadow-[0_0_0_4px_rgba(28,168,60,0.15)]"
                             : unlocked
-                            ? "border-[#9a673f] bg-[#f4e7bf] hover:-translate-y-1 hover:shadow-md"
-                            : "cursor-not-allowed border-[#7c6c58] bg-[#d7ccb7] opacity-70"
-                        } ${isSaving ? "opacity-80" : ""}`}
+                              ? "border-[#9a673f] bg-[#f4e7bf] hover:-translate-y-1 hover:shadow-md"
+                              : "cursor-not-allowed border-[#7c6c58] bg-[#d7ccb7] opacity-70"
+                          } ${isSaving ? "opacity-80" : ""}`}
                         style={{ animationDelay: `${index * 0.12}s` }}
                         title={character.name}
                       >
@@ -449,9 +449,8 @@ export default function ProfilePage() {
                           <img
                             src={character.portrait}
                             alt={character.name}
-                            className={`character-icon h-20 w-20 object-contain transition ${
-                              unlocked ? "group-hover:scale-105" : "grayscale"
-                            }`}
+                            className={`character-icon h-20 w-20 object-contain transition ${unlocked ? "group-hover:scale-105" : "grayscale"
+                              }`}
                           />
                           {!unlocked && (
                             <div className="absolute inset-0 flex items-center justify-center rounded-[16px] bg-black/20">

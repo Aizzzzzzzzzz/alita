@@ -14,6 +14,9 @@ type Props = {
   onHeroImageError: () => void;
 };
 
+const DEFAULT_PORTRAIT = "/characters/portraits/warrior.png";
+const DEFAULT_FULL_CHARACTER = "/characters/full/warrior.png";
+
 export default function AssessmentHome({
   studentName,
   studentAvatar,
@@ -26,6 +29,16 @@ export default function AssessmentHome({
   onResetSpecial,
   onHeroImageError,
 }: Props) {
+  const safeAvatar =
+    typeof studentAvatar === "string" && studentAvatar.startsWith("/")
+      ? studentAvatar
+      : DEFAULT_PORTRAIT;
+
+  const safeFullCharacter =
+    typeof studentFullCharacter === "string" && studentFullCharacter.startsWith("/")
+      ? studentFullCharacter
+      : DEFAULT_FULL_CHARACTER;
+
   return (
     <div>
       <section className="mb-8">
@@ -36,11 +49,12 @@ export default function AssessmentHome({
 
           <div className="grid items-center gap-6 md:grid-cols-[140px_1fr]">
             <div className="animate-avatar mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-[26px] border-4 border-[#5b341c] bg-[#fff3cf] text-6xl shadow-[0_6px_0_#8a5a35,0_10px_16px_rgba(0,0,0,0.16)]">
-              {typeof studentAvatar === "string" && studentAvatar.startsWith("/") ? (
-                <img src={studentAvatar} alt="Student avatar" className="h-24 w-24 object-contain" />
-              ) : (
-                studentAvatar
-              )}
+              <img
+                src={safeAvatar}
+                alt="Student avatar"
+                className="h-24 w-24 object-contain"
+                style={{ imageRendering: "pixelated" }}
+              />
             </div>
 
             <div>
@@ -125,7 +139,7 @@ export default function AssessmentHome({
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
-              minHeight: "230px",
+              minHeight: "280px",
               marginTop: "8px",
               marginBottom: "28px",
             }}
@@ -134,8 +148,8 @@ export default function AssessmentHome({
               className="animate-soft-drift"
               style={{
                 position: "relative",
-                width: "220px",
-                height: "220px",
+                width: "260px",
+                height: "260px",
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "end",
@@ -145,11 +159,11 @@ export default function AssessmentHome({
                 className="animate-hero-shadow"
                 style={{
                   position: "absolute",
-                  bottom: "10px",
+                  bottom: "12px",
                   left: "50%",
                   transform: "translateX(-50%)",
-                  width: "120px",
-                  height: "26px",
+                  width: "130px",
+                  height: "28px",
                   borderRadius: "999px",
                   background:
                     "radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.18) 40%, transparent 80%)",
@@ -158,41 +172,21 @@ export default function AssessmentHome({
                 }}
               />
 
-              {studentFullCharacter && studentFullCharacter.startsWith("/") ? (
-                <img
-                  src={studentFullCharacter}
-                  alt="Selected Hero"
-                  className="animate-hero-bounce"
-                  onError={onHeroImageError}
-                  style={{
-                    position: "relative",
-                    zIndex: 2,
-                    height: "170px",
-                    width: "auto",
-                    objectFit: "contain",
-                    imageRendering: "pixelated",
-                    filter: "drop-shadow(0 10px 10px rgba(0,0,0,0.2))",
-                  }}
-                />
-              ) : (
-                <div
-                  className="animate-hero-bounce"
-                  style={{
-                    position: "relative",
-                    zIndex: 2,
-                    height: "170px",
-                    width: "170px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "110px",
-                    lineHeight: 1,
-                    filter: "drop-shadow(0 10px 10px rgba(0,0,0,0.2))",
-                  }}
-                >
-                  {studentFullCharacter || "🧒"}
-                </div>
-              )}
+              <img
+                src={safeFullCharacter}
+                alt="Selected Hero"
+                className="animate-hero-bounce"
+                onError={onHeroImageError}
+                style={{
+                  position: "relative",
+                  zIndex: 2,
+                  maxHeight: "220px",
+                  width: "auto",
+                  objectFit: "contain",
+                  imageRendering: "pixelated",
+                  filter: "drop-shadow(0 10px 10px rgba(0,0,0,0.2))",
+                }}
+              />
             </div>
           </div>
 

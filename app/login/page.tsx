@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
+type Role = "admin" | "teacher" | "student";
+
 export default function LoginPage() {
   const router = useRouter();
 
-  const [selectedRole, setSelectedRole] = useState<"teacher" | "student">("teacher");
-  const [username, setUsername] = useState("");
+  const [selectedRole, setSelectedRole] = useState<Role>("teacher");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
@@ -24,8 +26,12 @@ export default function LoginPage() {
   };
 
   async function login() {
-    if (username.trim() === "" || password.trim() === "") {
-      setMessage("Please enter username and password.");
+    if (identifier.trim() === "" || password.trim() === "") {
+      setMessage(
+        selectedRole === "admin"
+          ? "Please enter admin email and password."
+          : "Please enter username and password."
+      );
       setMessageColor("#7f1d1d");
       return;
     }
@@ -33,74 +39,135 @@ export default function LoginPage() {
     setIsLoading(true);
     setMessage("");
 
-    if (selectedRole === "student") {
-      const { data: student, error } = await supabase
-        .from("students")
-        .select("*")
-        .eq("username", username)
-        .eq("password", password)
-        .single();
+    try {
+      if (selectedRole === "admin") {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: identifier.trim(),
+          password,
+        });
 
-      if (error || !student) {
-        setMessage("Invalid student login credentials.");
-        setMessageColor("#7f1d1d");
-        setIsLoading(false);
+        if (error || !data.user) {
+          setMessage(error?.message || "Invalid admin email or password.");
+          setMessageColor("#7f1d1d");
+          return;
+        }
+
+        const { data: adminProfile, error: profileError } = await supabase
+          .from("admins")
+          .select("*")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profileError || !adminProfile) {
+          await supabase.auth.signOut();
+          setMessage("This account is not registered as an admin.");
+          setMessageColor("#7f1d1d");
+          return;
+        }
+
+        localStorage.setItem("alitaUser", "admin");
+        localStorage.setItem("adminId", data.user.id);
+        localStorage.removeItem("teacherId");
+        localStorage.removeItem("studentId");
+
+        playSound("/sounds/success.mp3", 0.3);
+        setMessage("Admin login successful!");
+        setMessageColor("#065f46");
+
+        setTimeout(() => {
+          router.push("/admin");
+        }, 700);
+
         return;
       }
 
-      localStorage.setItem("alitaUser", "student");
-      localStorage.setItem("studentId", student.id);
-      localStorage.setItem(
-        "alitaStudentProfile",
-        JSON.stringify({
-          id: student.id,
-          avatar: student.avatar || "🧒",
-          fullName: student.full_name,
-          username: student.username,
-          grade: student.grade_level,
-          section: student.section || "",
-          guardian: student.guardian_name || "",
-        })
-      );
+      if (selectedRole === "student") {
+        const { data: student, error } = await supabase
+          .from("students")
+          .select("*")
+          .eq("username", identifier.trim())
+          .eq("password", password)
+          .single();
+
+        if (error || !student) {
+          setMessage("Invalid student login credentials.");
+          setMessageColor("#7f1d1d");
+          return;
+        }
+
+        localStorage.setItem("alitaUser", "student");
+        localStorage.setItem("studentId", student.id);
+        localStorage.removeItem("teacherId");
+        localStorage.removeItem("adminId");
+
+        localStorage.setItem(
+          "alitaStudentProfile",
+          JSON.stringify({
+            id: student.id,
+            avatar:
+              student.avatar && student.avatar.startsWith("/")
+                ? student.avatar
+                : "/characters/portraits/warrior.png",
+            fullCharacter:
+              student.full_character && student.full_character.startsWith("/")
+                ? student.full_character
+                : "/characters/full/warrior.png",
+            characterId: "warrior",
+            fullName: student.full_name || "",
+            username: student.username || "",
+            grade: student.grade_level || "Grade 3",
+            section: student.section || "",
+            guardian: student.guardian_name || "",
+          })
+        );
+
+        playSound("/sounds/success.mp3", 0.3);
+        setMessage("Student login successful!");
+        setMessageColor("#065f46");
+
+        setTimeout(() => {
+          router.push("/");
+        }, 700);
+
+        return;
+      }
+
+      const { data: teacher, error } = await supabase
+        .from("teachers")
+        .select("*")
+        .eq("username", identifier.trim())
+        .eq("password", password)
+        .single();
+
+      if (error || !teacher) {
+        setMessage("Invalid teacher login credentials.");
+        setMessageColor("#7f1d1d");
+        return;
+      }
+
+      localStorage.setItem("alitaUser", "teacher");
+      localStorage.setItem("teacherId", teacher.id);
+      localStorage.removeItem("adminId");
+      localStorage.removeItem("studentId");
 
       playSound("/sounds/success.mp3", 0.3);
-      setMessage("Student login successful!");
+      setMessage("Teacher login successful!");
       setMessageColor("#065f46");
 
       setTimeout(() => {
-        router.push("/");
+        router.push("/teacher");
       }, 700);
-
-      return;
-    }
-
-    const { data: teacher, error } = await supabase
-      .from("teachers")
-      .select("*")
-      .eq("username", username)
-      .eq("password", password)
-      .single();
-
-    if (error || !teacher) {
-      setMessage("Invalid teacher login credentials.");
+    } catch {
+      setMessage("Something went wrong during login.");
       setMessageColor("#7f1d1d");
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    localStorage.setItem("alitaUser", "teacher");
-    localStorage.setItem("teacherId", teacher.id);
-
-    playSound("/sounds/success.mp3", 0.3);
-    setMessage("Teacher login successful!");
-    setMessageColor("#065f46");
-
-    setTimeout(() => {
-      router.push("/teacher");
-    }, 700);
   }
 
+  const isAdmin = selectedRole === "admin";
   const isTeacher = selectedRole === "teacher";
+  const isStudent = selectedRole === "student";
 
   return (
     <div
@@ -142,7 +209,6 @@ export default function LoginPage() {
         }
       `}</style>
 
-      {/* Clouds */}
       <div
         style={{
           position: "absolute",
@@ -217,13 +283,12 @@ export default function LoginPage() {
         <div
           style={{
             width: "100%",
-            maxWidth: "520px",
+            maxWidth: "560px",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
           }}
         >
-          {/* Logo / Title */}
           <div style={{ textAlign: "center", marginBottom: "28px" }}>
             <div
               style={{
@@ -262,13 +327,12 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Teacher / Student buttons */}
           <div
             style={{
               width: "100%",
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "14px",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "12px",
               marginBottom: "22px",
             }}
           >
@@ -277,16 +341,43 @@ export default function LoginPage() {
               onMouseEnter={() => playSound("/sounds/hover.mp3", 0.12)}
               onClick={() => {
                 playSound("/sounds/click.mp3");
+                setSelectedRole("admin");
+                setIdentifier("");
+                setPassword("");
+                setMessage("");
+              }}
+              style={{
+                border: "4px solid #6a4526",
+                background: isAdmin ? "#8b5cf6" : "#d9ccff",
+                color: "#25124d",
+                padding: "18px 10px",
+                cursor: "pointer",
+                fontFamily: "'Press Start 2P', cursive",
+                fontSize: "12px",
+                boxShadow: isAdmin ? "0 6px 0 #5b35a8" : "0 6px 0 #9a85c8",
+              }}
+            >
+              ADMIN
+            </button>
+
+            <button
+              type="button"
+              onMouseEnter={() => playSound("/sounds/hover.mp3", 0.12)}
+              onClick={() => {
+                playSound("/sounds/click.mp3");
                 setSelectedRole("teacher");
+                setIdentifier("");
+                setPassword("");
+                setMessage("");
               }}
               style={{
                 border: "4px solid #6a4526",
                 background: isTeacher ? "#f5a623" : "#f7d18f",
                 color: "#3d2817",
-                padding: "18px 12px",
+                padding: "18px 10px",
                 cursor: "pointer",
                 fontFamily: "'Press Start 2P', cursive",
-                fontSize: "14px",
+                fontSize: "12px",
                 boxShadow: isTeacher ? "0 6px 0 #8f5a16" : "0 6px 0 #ae8450",
               }}
             >
@@ -299,23 +390,25 @@ export default function LoginPage() {
               onClick={() => {
                 playSound("/sounds/click.mp3");
                 setSelectedRole("student");
+                setIdentifier("");
+                setPassword("");
+                setMessage("");
               }}
               style={{
                 border: "4px solid #6a4526",
-                background: !isTeacher ? "#7ad14b" : "#d8efb8",
+                background: isStudent ? "#7ad14b" : "#d8efb8",
                 color: "#28401a",
-                padding: "18px 12px",
+                padding: "18px 10px",
                 cursor: "pointer",
                 fontFamily: "'Press Start 2P', cursive",
-                fontSize: "14px",
-                boxShadow: !isTeacher ? "0 6px 0 #4f8f2d" : "0 6px 0 #8cad68",
+                fontSize: "12px",
+                boxShadow: isStudent ? "0 6px 0 #4f8f2d" : "0 6px 0 #8cad68",
               }}
             >
               STUDENT
             </button>
           </div>
 
-          {/* Login box */}
           <div
             style={{
               width: "100%",
@@ -333,15 +426,15 @@ export default function LoginPage() {
                 lineHeight: 1.6,
               }}
             >
-              Log in as {isTeacher ? "teacher" : "student"}...
+              {isAdmin ? "Log in as admin using email..." : `Log in as ${selectedRole}...`}
             </div>
 
             <div style={{ display: "grid", gap: "12px" }}>
               <input
-                type="text"
-                placeholder="USERNAME"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                type={isAdmin ? "email" : "text"}
+                placeholder={isAdmin ? "ADMIN EMAIL" : "USERNAME"}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 style={{
                   width: "100%",
                   border: "4px solid #9c835f",
@@ -407,19 +500,44 @@ export default function LoginPage() {
                   width: "100%",
                   marginTop: "4px",
                   border: "4px solid #6a4526",
-                  background: isTeacher ? "#f5a623" : "#58b63f",
-                  color: isTeacher ? "#3d2817" : "#f4fff0",
+                  background: isAdmin ? "#8b5cf6" : isTeacher ? "#f5a623" : "#58b63f",
+                  color: isAdmin ? "#ffffff" : isTeacher ? "#3d2817" : "#f4fff0",
                   padding: "16px 12px",
                   cursor: "pointer",
                   fontFamily: "'Press Start 2P', cursive",
                   fontSize: "13px",
-                  boxShadow: isTeacher ? "0 6px 0 #8f5a16" : "0 6px 0 #377625",
+                  boxShadow: isAdmin
+                    ? "0 6px 0 #5b35a8"
+                    : isTeacher
+                    ? "0 6px 0 #8f5a16"
+                    : "0 6px 0 #377625",
                   opacity: isLoading ? 0.7 : 1,
                 }}
               >
                 {isLoading ? "LOADING..." : "LOGIN"}
               </button>
             </div>
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => router.push("/forgot-password")}
+                style={{
+                  marginTop: "14px",
+                  width: "100%",
+                  border: "4px solid #6a4526",
+                  background: "#d9ccff",
+                  color: "#3b246f",
+                  padding: "14px 12px",
+                  cursor: "pointer",
+                  fontFamily: "'Press Start 2P', cursive",
+                  fontSize: "11px",
+                  boxShadow: "0 6px 0 #9a85c8",
+                }}
+              >
+                FORGOT ADMIN PASSWORD?
+              </button>
+            )}
 
             <div
               style={{
@@ -444,7 +562,9 @@ export default function LoginPage() {
               lineHeight: 1.8,
             }}
           >
-            {isTeacher
+            {isAdmin
+              ? "Admin uses real email login and email recovery"
+              : isTeacher
               ? "Teachers manage quizzes, students, and progress"
               : "Students enter learning worlds and earn stars"}
           </div>
