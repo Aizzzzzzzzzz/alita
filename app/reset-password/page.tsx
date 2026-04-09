@@ -17,33 +17,28 @@ export default function ResetPasswordPage() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
+  let mounted = true;
 
-    async function checkRecoverySession() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session && mounted) {
-        setIsReady(true);
-      }
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY" || session) {
+      if (mounted) setIsReady(true);
     }
+  });
 
-    checkRecoverySession();
+  // force check once
+  supabase.auth.getSession().then(({ data }) => {
+    if (data?.session && mounted) {
+      setIsReady(true);
+    }
+  });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === "PASSWORD_RECOVERY" || session) && mounted) {
-        setIsReady(true);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+  return () => {
+    mounted = false;
+    subscription.unsubscribe();
+  };
+}, []);
 
   async function updatePassword() {
     if (!isReady) {
