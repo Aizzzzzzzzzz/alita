@@ -90,13 +90,13 @@ function SectionCard({
   subtitle,
   children,
   right,
-  isMobile,
+  isTabletOrBelow,
 }: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
   right?: React.ReactNode;
-  isMobile: boolean;
+  isTabletOrBelow: boolean;
 }) {
   return (
     <section
@@ -104,27 +104,29 @@ function SectionCard({
         background: "#ffffff",
         border: "1px solid #dbe3ef",
         borderRadius: 18,
-        padding: isMobile ? 16 : 22,
+        padding: isTabletOrBelow ? 16 : 22,
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
+        minWidth: 0,
       }}
     >
       <div
         style={{
           display: "flex",
-          flexDirection: isMobile ? "column" : "row",
-          alignItems: isMobile ? "flex-start" : "center",
+          flexDirection: isTabletOrBelow ? "column" : "row",
+          alignItems: isTabletOrBelow ? "flex-start" : "center",
           justifyContent: "space-between",
           gap: 12,
           marginBottom: 18,
         }}
       >
-        <div>
+        <div style={{ minWidth: 0 }}>
           <h2
             style={{
               margin: 0,
-              fontSize: isMobile ? 20 : 24,
+              fontSize: isTabletOrBelow ? 20 : 24,
               fontWeight: 800,
               color: "#0f172a",
+              wordBreak: "break-word",
             }}
           >
             {title}
@@ -135,7 +137,9 @@ function SectionCard({
                 margin: "6px 0 0 0",
                 color: "#64748b",
                 fontWeight: 500,
-                fontSize: isMobile ? 13 : 14,
+                fontSize: isTabletOrBelow ? 13 : 14,
+                lineHeight: 1.5,
+                wordBreak: "break-word",
               }}
             >
               {subtitle}
@@ -153,12 +157,10 @@ function MenuButton({
   active,
   children,
   onClick,
-  isMobile,
 }: {
   active: boolean;
   children: React.ReactNode;
   onClick: () => void;
-  isMobile: boolean;
 }) {
   return (
     <button
@@ -169,7 +171,7 @@ function MenuButton({
         background: active ? "#2563eb" : "#ffffff",
         color: active ? "#ffffff" : "#0f172a",
         borderRadius: 14,
-        padding: isMobile ? "12px 14px" : "14px 16px",
+        padding: "14px 16px",
         fontWeight: 700,
         fontSize: 14,
         cursor: "pointer",
@@ -185,10 +187,24 @@ function MenuButton({
   );
 }
 
+function ScrollTable({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        width: "100%",
+        overflowX: "auto",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function TeacherPage() {
   const router = useRouter();
 
-  const [isMobile, setIsMobile] = useState(false);
+  const [screenWidth, setScreenWidth] = useState(1440);
   const [students, setStudents] = useState<Student[]>([]);
   const [form, setForm] = useState({
     name: "",
@@ -225,8 +241,12 @@ export default function TeacherPage() {
   const [subjectSummary, setSubjectSummary] = useState<SubjectSummary[]>([]);
   const [progressLoading, setProgressLoading] = useState(false);
 
+  const isPhone = screenWidth <= 640;
+  const isTabletOrBelow = screenWidth <= 1024;
+  const isSmallLaptop = screenWidth <= 1280;
+
   useEffect(() => {
-    const checkScreen = () => setIsMobile(window.innerWidth <= 900);
+    const checkScreen = () => setScreenWidth(window.innerWidth);
     checkScreen();
     window.addEventListener("resize", checkScreen);
     return () => window.removeEventListener("resize", checkScreen);
@@ -547,39 +567,19 @@ export default function TeacherPage() {
     if (!confirmed) return;
 
     try {
-      const { error: resultsError } = await supabase
-        .from("results")
-        .delete()
-        .eq("student_id", id);
-
+      const { error: resultsError } = await supabase.from("results").delete().eq("student_id", id);
       if (resultsError) throw resultsError;
 
-      const { error: progressError } = await supabase
-        .from("student_progress")
-        .delete()
-        .eq("student_id", id);
-
+      const { error: progressError } = await supabase.from("student_progress").delete().eq("student_id", id);
       if (progressError) throw progressError;
 
-      const { error: walletError } = await supabase
-        .from("student_wallets")
-        .delete()
-        .eq("student_id", id);
-
+      const { error: walletError } = await supabase.from("student_wallets").delete().eq("student_id", id);
       if (walletError) throw walletError;
 
-      const { error: unlocksError } = await supabase
-        .from("character_unlocks")
-        .delete()
-        .eq("student_id", id);
-
+      const { error: unlocksError } = await supabase.from("character_unlocks").delete().eq("student_id", id);
       if (unlocksError) throw unlocksError;
 
-      const { error: studentError } = await supabase
-        .from("students")
-        .delete()
-        .eq("id", id);
-
+      const { error: studentError } = await supabase.from("students").delete().eq("id", id);
       if (studentError) throw studentError;
 
       setStatusMessage("Student account deleted.");
@@ -756,6 +756,7 @@ export default function TeacherPage() {
     setQuizGrade(quiz.grade_level);
     clearQuestionForm();
     await loadQuizQuestions(quiz.id);
+    if (isTabletOrBelow) window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function editQuestion(question: TeacherQuestion) {
@@ -891,6 +892,7 @@ export default function TeacherPage() {
     outline: "none",
     color: "#0f172a",
     boxSizing: "border-box",
+    minWidth: 0,
   };
 
   const primaryButton: React.CSSProperties = {
@@ -943,20 +945,32 @@ export default function TeacherPage() {
     cursor: "pointer",
   };
 
+  const statCardsColumns = isPhone ? "1fr" : isTabletOrBelow ? "1fr 1fr" : "repeat(4, minmax(0, 1fr))";
+  const studentFormColumns = isPhone ? "1fr" : isTabletOrBelow ? "1fr 1fr" : "repeat(5, minmax(0, 1fr))";
+  const questionChoiceColumns = isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))";
+  const subjectRecentColumns = isTabletOrBelow ? "1fr" : "1fr 1fr";
+  const specialQuizColumns = isPhone ? "1fr" : "repeat(3, minmax(0, 1fr))";
+  const pageColumns = isTabletOrBelow
+    ? "1fr"
+    : isSmallLaptop
+    ? "220px minmax(0, 1fr)"
+    : "260px minmax(0, 1fr)";
+
   return (
     <div
       style={{
         minHeight: "100vh",
         background: "linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%)",
         color: "#0f172a",
+        overflowX: "hidden",
       }}
     >
       <header
         style={{
           position: "sticky",
           top: 0,
-          zIndex: 50,
-          background: "rgba(255,255,255,0.9)",
+          zIndex: 60,
+          background: "rgba(255,255,255,0.92)",
           backdropFilter: "blur(10px)",
           borderBottom: "1px solid #dbe3ef",
         }}
@@ -965,15 +979,14 @@ export default function TeacherPage() {
           style={{
             maxWidth: 1400,
             margin: "0 auto",
-            padding: isMobile ? "14px 16px" : "18px 24px",
+            padding: isPhone ? "12px 14px" : "18px 24px",
             display: "flex",
-            flexDirection: isMobile ? "column" : "row",
-            alignItems: isMobile ? "flex-start" : "center",
+            alignItems: "center",
             justifyContent: "space-between",
-            gap: 14,
+            gap: 12,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             <div
               style={{
                 width: 48,
@@ -987,21 +1000,44 @@ export default function TeacherPage() {
                 fontWeight: 800,
                 fontSize: 20,
                 boxShadow: "0 10px 20px rgba(37, 99, 235, 0.25)",
+                flexShrink: 0,
               }}
             >
               A
             </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 800 }}>
+            <div style={{ minWidth: 0 }}>
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: isPhone ? 20 : isTabletOrBelow ? 24 : 28,
+                  fontWeight: 800,
+                  wordBreak: "break-word",
+                }}
+              >
                 Teacher Admin Panel
               </h1>
-              <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: 14 }}>
+              <p
+                style={{
+                  margin: "4px 0 0 0",
+                  color: "#64748b",
+                  fontSize: isPhone ? 13 : 14,
+                  lineHeight: 1.4,
+                  wordBreak: "break-word",
+                }}
+              >
                 Simple responsive dashboard
               </p>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10, width: isMobile ? "100%" : "auto" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexShrink: 0,
+            }}
+          >
             <div
               style={{
                 width: 42,
@@ -1016,11 +1052,12 @@ export default function TeacherPage() {
             >
               👩‍🏫
             </div>
+
             <button
               onClick={logout}
               style={{
                 ...dangerButton,
-                width: isMobile ? "100%" : "auto",
+                padding: isPhone ? "10px 14px" : "12px 16px",
               }}
             >
               Logout
@@ -1033,10 +1070,11 @@ export default function TeacherPage() {
         style={{
           maxWidth: 1400,
           margin: "0 auto",
-          padding: isMobile ? 16 : 24,
+          padding: isPhone ? 12 : 24,
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "260px 1fr",
+          gridTemplateColumns: pageColumns,
           gap: 20,
+          alignItems: "start",
         }}
       >
         <aside
@@ -1047,6 +1085,9 @@ export default function TeacherPage() {
             padding: 16,
             height: "fit-content",
             boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
+            position: isTabletOrBelow ? "static" : "sticky",
+            top: 96,
+            minWidth: 0,
           }}
         >
           <p
@@ -1062,18 +1103,12 @@ export default function TeacherPage() {
             Navigation
           </p>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "1fr",
-              gap: 10,
-            }}
-          >
-            <MenuButton active={activeTab === "students"} onClick={() => setActiveTab("students")} isMobile={isMobile}>
+          <div style={{ display: "grid", gap: 10 }}>
+            <MenuButton active={activeTab === "students"} onClick={() => setActiveTab("students")}>
               Student Accounts
             </MenuButton>
 
-            <MenuButton active={activeTab === "specialQuiz"} onClick={() => setActiveTab("specialQuiz")} isMobile={isMobile}>
+            <MenuButton active={activeTab === "specialQuiz"} onClick={() => setActiveTab("specialQuiz")}>
               Special Quiz
             </MenuButton>
 
@@ -1083,24 +1118,23 @@ export default function TeacherPage() {
                 setActiveTab("progress");
                 loadProgressData();
               }}
-              isMobile={isMobile}
             >
               Progress Tracking
             </MenuButton>
           </div>
         </aside>
 
-        <main style={{ display: "grid", gap: 20 }}>
+        <main style={{ display: "grid", gap: 20, minWidth: 0 }}>
           {activeTab === "students" && (
             <SectionCard
               title="Student Account Management"
               subtitle="Create and manage student accounts assigned to your class."
-              isMobile={isMobile}
+              isTabletOrBelow={isTabletOrBelow}
             >
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr" : "repeat(5, minmax(0, 1fr))",
+                  gridTemplateColumns: studentFormColumns,
                   gap: 12,
                 }}
               >
@@ -1119,93 +1153,98 @@ export default function TeacherPage() {
                 style={{
                   marginTop: 14,
                   display: "flex",
-                  flexDirection: isMobile ? "column" : "row",
-                  alignItems: isMobile ? "stretch" : "center",
+                  flexDirection: isTabletOrBelow ? "column" : "row",
+                  alignItems: isTabletOrBelow ? "stretch" : "center",
                   gap: 12,
                 }}
               >
-                <button onClick={addStudent} style={{ ...primaryButton, width: isMobile ? "100%" : "auto" }}>
+                <button onClick={addStudent} style={{ ...primaryButton, width: isTabletOrBelow ? "100%" : "auto" }}>
                   Add Student
                 </button>
-                <p style={{ margin: 0, fontWeight: 700, color: statusColor }}>{statusMessage}</p>
+                {!!statusMessage && (
+                  <p style={{ margin: 0, fontWeight: 700, color: statusColor, wordBreak: "break-word" }}>{statusMessage}</p>
+                )}
               </div>
 
-              <div style={{ marginTop: 20, overflowX: "auto" }}>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "separate",
-                    borderSpacing: 0,
-                    minWidth: 760,
-                    overflow: "hidden",
-                    borderRadius: 14,
-                    border: "1px solid #dbe3ef",
-                  }}
-                >
-                  <thead style={{ background: "#eff6ff" }}>
-                    <tr>
-                      {["Name", "Username", "Password", "Grade", "Section", "Actions"].map((head) => (
-                        <th
-                          key={head}
-                          style={{
-                            padding: "14px 12px",
-                            textAlign: "left",
-                            fontSize: 14,
-                            color: "#334155",
-                            borderBottom: "1px solid #dbe3ef",
-                          }}
-                        >
-                          {head}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {students.map((student, index) => (
-                      <tr key={student.id} style={{ background: index % 2 === 0 ? "#fff" : "#f8fafc" }}>
-                        <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0", fontWeight: 600 }}>{student.name}</td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{student.username}</td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{student.password}</td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{student.grade}</td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{student.section}</td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                            <button onClick={() => editStudent(student)} style={primaryButton}>
-                              Edit
-                            </button>
-                            <button onClick={() => deleteStudent(student.id)} style={dangerButton}>
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-
-                    {students.length === 0 && (
+              <div style={{ marginTop: 20 }}>
+                <ScrollTable>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "separate",
+                      borderSpacing: 0,
+                      minWidth: 760,
+                      borderRadius: 14,
+                      border: "1px solid #dbe3ef",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <thead style={{ background: "#eff6ff" }}>
                       <tr>
-                        <td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#64748b", fontWeight: 600 }}>
-                          No students yet.
-                        </td>
+                        {["Name", "Username", "Password", "Grade", "Section", "Actions"].map((head) => (
+                          <th
+                            key={head}
+                            style={{
+                              padding: "14px 12px",
+                              textAlign: "left",
+                              fontSize: 14,
+                              color: "#334155",
+                              borderBottom: "1px solid #dbe3ef",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {head}
+                          </th>
+                        ))}
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+
+                    <tbody>
+                      {students.map((student, index) => (
+                        <tr key={student.id} style={{ background: index % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                          <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0", fontWeight: 600 }}>{student.name}</td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{student.username}</td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{student.password}</td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{student.grade}</td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{student.section}</td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                              <button onClick={() => editStudent(student)} style={primaryButton}>
+                                Edit
+                              </button>
+                              <button onClick={() => deleteStudent(student.id)} style={dangerButton}>
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {students.length === 0 && (
+                        <tr>
+                          <td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#64748b", fontWeight: 600 }}>
+                            No students yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </ScrollTable>
               </div>
             </SectionCard>
           )}
 
           {activeTab === "specialQuiz" && (
-            <div style={{ display: "grid", gap: 20 }}>
+            <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
               <SectionCard
                 title="Special Quiz Builder"
                 subtitle="Create teacher-made quizzes and manage their status."
-                isMobile={isMobile}
+                isTabletOrBelow={isTabletOrBelow}
               >
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
+                    gridTemplateColumns: specialQuizColumns,
                     gap: 12,
                   }}
                 >
@@ -1238,7 +1277,7 @@ export default function TeacherPage() {
               <SectionCard
                 title="Teacher-Made Quizzes"
                 subtitle="Open, publish, archive, or delete custom quizzes."
-                isMobile={isMobile}
+                isTabletOrBelow={isTabletOrBelow}
               >
                 <div style={{ display: "grid", gap: 12 }}>
                   {teacherQuizzes.map((quiz) => (
@@ -1249,19 +1288,20 @@ export default function TeacherPage() {
                         borderRadius: 14,
                         padding: 16,
                         background: "#f8fafc",
+                        minWidth: 0,
                       }}
                     >
                       <div
                         style={{
                           display: "flex",
-                          flexDirection: isMobile ? "column" : "row",
+                          flexDirection: isTabletOrBelow ? "column" : "row",
                           justifyContent: "space-between",
-                          alignItems: isMobile ? "flex-start" : "center",
+                          alignItems: isTabletOrBelow ? "flex-start" : "center",
                           gap: 12,
                         }}
                       >
-                        <div>
-                          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{quiz.title}</h3>
+                        <div style={{ minWidth: 0 }}>
+                          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, wordBreak: "break-word" }}>{quiz.title}</h3>
                           <p style={{ margin: "6px 0 0 0", color: "#64748b", fontWeight: 600 }}>
                             {quiz.subject} • {quiz.grade_level}
                           </p>
@@ -1324,7 +1364,7 @@ export default function TeacherPage() {
                 <SectionCard
                   title={editingQuestionId ? "Edit Question" : "Add Questions to Selected Quiz"}
                   subtitle="Build the quiz items and mark the correct answer."
-                  isMobile={isMobile}
+                  isTabletOrBelow={isTabletOrBelow}
                 >
                   <div style={{ display: "grid", gap: 12 }}>
                     <textarea
@@ -1337,7 +1377,7 @@ export default function TeacherPage() {
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
+                        gridTemplateColumns: questionChoiceColumns,
                         gap: 12,
                       }}
                     >
@@ -1386,20 +1426,20 @@ export default function TeacherPage() {
                         <div
                           style={{
                             display: "flex",
-                            flexDirection: isMobile ? "column" : "row",
+                            flexDirection: isTabletOrBelow ? "column" : "row",
                             justifyContent: "space-between",
                             gap: 12,
                           }}
                         >
-                          <div>
+                          <div style={{ minWidth: 0 }}>
                             <p style={{ margin: 0, color: "#2563eb", fontWeight: 800 }}>Question {index + 1}</p>
-                            <p style={{ margin: "10px 0", fontWeight: 800, fontSize: 17 }}>{question.question_text}</p>
+                            <p style={{ margin: "10px 0", fontWeight: 800, fontSize: 17, wordBreak: "break-word" }}>{question.question_text}</p>
                             <div style={{ color: "#475569", fontWeight: 600, display: "grid", gap: 4 }}>
-                              <p style={{ margin: 0 }}>A. {question.choice_a}</p>
-                              <p style={{ margin: 0 }}>B. {question.choice_b}</p>
-                              <p style={{ margin: 0 }}>C. {question.choice_c}</p>
-                              <p style={{ margin: 0 }}>D. {question.choice_d}</p>
-                              <p style={{ margin: "8px 0 0 0", color: "#16a34a", fontWeight: 800 }}>
+                              <p style={{ margin: 0, wordBreak: "break-word" }}>A. {question.choice_a}</p>
+                              <p style={{ margin: 0, wordBreak: "break-word" }}>B. {question.choice_b}</p>
+                              <p style={{ margin: 0, wordBreak: "break-word" }}>C. {question.choice_c}</p>
+                              <p style={{ margin: 0, wordBreak: "break-word" }}>D. {question.choice_d}</p>
+                              <p style={{ margin: "8px 0 0 0", color: "#16a34a", fontWeight: 800, wordBreak: "break-word" }}>
                                 Correct: {question.correct_answer}
                               </p>
                             </div>
@@ -1438,21 +1478,21 @@ export default function TeacherPage() {
           )}
 
           {activeTab === "progress" && (
-            <div style={{ display: "grid", gap: 20 }}>
+            <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
               <SectionCard
                 title="Progress Tracking Dashboard"
                 subtitle="Monitor student activity, quiz performance, and subject summaries."
                 right={
-                  <button onClick={loadProgressData} style={warningButton}>
+                  <button onClick={loadProgressData} style={{ ...warningButton, width: isPhone ? "100%" : "auto" }}>
                     Refresh Data
                   </button>
                 }
-                isMobile={isMobile}
+                isTabletOrBelow={isTabletOrBelow}
               >
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, minmax(0, 1fr))",
+                    gridTemplateColumns: statCardsColumns,
                     gap: 12,
                   }}
                 >
@@ -1469,20 +1509,21 @@ export default function TeacherPage() {
                         border: "1px solid #dbe3ef",
                         borderRadius: 14,
                         padding: 16,
+                        minWidth: 0,
                       }}
                     >
                       <p style={{ margin: 0, color: "#64748b", fontWeight: 700, fontSize: 13 }}>{item.label}</p>
-                      <p style={{ margin: "10px 0 0 0", fontSize: isMobile ? 24 : 30, fontWeight: 800 }}>{item.value}</p>
+                      <p style={{ margin: "10px 0 0 0", fontSize: isPhone ? 24 : 30, fontWeight: 800, wordBreak: "break-word" }}>{item.value}</p>
                     </div>
                   ))}
                 </div>
               </SectionCard>
 
-              <SectionCard title="Student Progress" subtitle="Overall progress and latest activity per student." isMobile={isMobile}>
+              <SectionCard title="Student Progress" subtitle="Overall progress and latest activity per student." isTabletOrBelow={isTabletOrBelow}>
                 {progressLoading ? (
                   <p style={{ margin: 0, color: "#64748b", fontWeight: 600 }}>Loading progress...</p>
                 ) : (
-                  <div style={{ overflowX: "auto" }}>
+                  <ScrollTable>
                     <table
                       style={{
                         width: "100%",
@@ -1517,6 +1558,7 @@ export default function TeacherPage() {
                                 fontSize: 14,
                                 color: "#334155",
                                 borderBottom: "1px solid #dbe3ef",
+                                whiteSpace: "nowrap",
                               }}
                             >
                               {head}
@@ -1529,7 +1571,7 @@ export default function TeacherPage() {
                         {progressRows.map((row, index) => (
                           <tr key={row.student_id} style={{ background: index % 2 === 0 ? "#fff" : "#f8fafc" }}>
                             <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0", fontWeight: 700 }}>{row.student_name}</td>
-                            <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{row.grade}</td>
+                            <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{row.grade}</td>
                             <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{row.section}</td>
                             <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{row.completed_levels}</td>
                             <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{row.progress_stars}</td>
@@ -1538,7 +1580,7 @@ export default function TeacherPage() {
                             <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{row.average_score}</td>
                             <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{row.average_stars}</td>
                             <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>{row.total_attempts}</td>
-                            <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0" }}>
+                            <td style={{ padding: 12, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>
                               {row.last_activity ? formatDate(row.last_activity) : "-"}
                             </td>
                           </tr>
@@ -1553,18 +1595,19 @@ export default function TeacherPage() {
                         )}
                       </tbody>
                     </table>
-                  </div>
+                  </ScrollTable>
                 )}
               </SectionCard>
 
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                  gridTemplateColumns: subjectRecentColumns,
                   gap: 20,
+                  minWidth: 0,
                 }}
               >
-                <SectionCard title="Subject Performance" subtitle="Attempts and average performance by subject." isMobile={isMobile}>
+                <SectionCard title="Subject Performance" subtitle="Attempts and average performance by subject." isTabletOrBelow={isTabletOrBelow}>
                   <div style={{ display: "grid", gap: 12 }}>
                     {subjectSummary.map((item) => (
                       <div
@@ -1579,8 +1622,9 @@ export default function TeacherPage() {
                         <div
                           style={{
                             display: "flex",
+                            flexDirection: isPhone ? "column" : "row",
                             justifyContent: "space-between",
-                            alignItems: "center",
+                            alignItems: isPhone ? "flex-start" : "center",
                             gap: 10,
                           }}
                         >
@@ -1604,7 +1648,7 @@ export default function TeacherPage() {
                           style={{
                             marginTop: 12,
                             display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
+                            gridTemplateColumns: isPhone ? "1fr" : "1fr 1fr",
                             gap: 10,
                           }}
                         >
@@ -1651,7 +1695,7 @@ export default function TeacherPage() {
                   </div>
                 </SectionCard>
 
-                <SectionCard title="Recent Quiz Attempts" subtitle="Latest quiz activity from your students." isMobile={isMobile}>
+                <SectionCard title="Recent Quiz Attempts" subtitle="Latest quiz activity from your students." isTabletOrBelow={isTabletOrBelow}>
                   <div style={{ display: "grid", gap: 12 }}>
                     {recentAttempts.map((item) => (
                       <div
@@ -1666,14 +1710,14 @@ export default function TeacherPage() {
                         <div
                           style={{
                             display: "flex",
-                            flexDirection: isMobile ? "column" : "row",
+                            flexDirection: isTabletOrBelow ? "column" : "row",
                             justifyContent: "space-between",
                             gap: 8,
                           }}
                         >
-                          <div>
-                            <h4 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>{item.student_name}</h4>
-                            <p style={{ margin: "6px 0 0 0", color: "#64748b", fontWeight: 600 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <h4 style={{ margin: 0, fontSize: 17, fontWeight: 800, wordBreak: "break-word" }}>{item.student_name}</h4>
+                            <p style={{ margin: "6px 0 0 0", color: "#64748b", fontWeight: 600, wordBreak: "break-word" }}>
                               {item.quiz_title} • {item.subject}
                             </p>
                           </div>

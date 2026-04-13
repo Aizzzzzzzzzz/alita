@@ -47,10 +47,12 @@ function SectionCard({
   title,
   subtitle,
   children,
+  isTabletOrBelow,
 }: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
+  isTabletOrBelow: boolean;
 }) {
   return (
     <section
@@ -58,17 +60,19 @@ function SectionCard({
         background: "#ffffff",
         border: "1px solid #dbe3ef",
         borderRadius: 18,
-        padding: 22,
+        padding: isTabletOrBelow ? 16 : 22,
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
+        minWidth: 0,
       }}
     >
-      <div style={{ marginBottom: 18 }}>
+      <div style={{ marginBottom: 18, minWidth: 0 }}>
         <h2
           style={{
             margin: 0,
-            fontSize: 24,
+            fontSize: isTabletOrBelow ? 20 : 24,
             fontWeight: 800,
             color: "#0f172a",
+            wordBreak: "break-word",
           }}
         >
           {title}
@@ -79,7 +83,9 @@ function SectionCard({
               margin: "6px 0 0 0",
               color: "#64748b",
               fontWeight: 500,
-              fontSize: 14,
+              fontSize: isTabletOrBelow ? 13 : 14,
+              lineHeight: 1.5,
+              wordBreak: "break-word",
             }}
           >
             {subtitle}
@@ -125,9 +131,24 @@ function MenuButton({
   );
 }
 
+function ScrollTable({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        width: "100%",
+        overflowX: "auto",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const router = useRouter();
 
+  const [screenWidth, setScreenWidth] = useState(1440);
   const [currentAdmin, setCurrentAdmin] = useState<AdminRow | null>(null);
   const [teachers, setTeachers] = useState<TeacherRow[]>([]);
   const [students, setStudents] = useState<StudentRow[]>([]);
@@ -152,6 +173,17 @@ export default function AdminPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [statusColor, setStatusColor] = useState("#16a34a");
   const [pageLoading, setPageLoading] = useState(true);
+
+  const isPhone = screenWidth <= 640;
+  const isTabletOrBelow = screenWidth <= 1024;
+  const isSmallLaptop = screenWidth <= 1280;
+
+  useEffect(() => {
+    const checkScreen = () => setScreenWidth(window.innerWidth);
+    checkScreen();
+    window.addEventListener("resize", checkScreen);
+    return () => window.removeEventListener("resize", checkScreen);
+  }, []);
 
   useEffect(() => {
     checkAdminSession();
@@ -448,6 +480,7 @@ export default function AdminPage() {
     outline: "none",
     color: "#0f172a",
     boxSizing: "border-box",
+    minWidth: 0,
   };
 
   const primaryButton: React.CSSProperties = {
@@ -470,6 +503,26 @@ export default function AdminPage() {
     cursor: "pointer",
   };
 
+  const pageColumns = isTabletOrBelow
+    ? "1fr"
+    : isSmallLaptop
+    ? "220px minmax(0, 1fr)"
+    : "260px minmax(0, 1fr)";
+
+  const overviewColumns = isPhone
+    ? "1fr"
+    : isTabletOrBelow
+    ? "1fr 1fr"
+    : "repeat(4, minmax(0, 1fr))";
+
+  const accountColumns = isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))";
+
+  const teacherFormColumns = isPhone
+    ? "1fr"
+    : isTabletOrBelow
+    ? "1fr 1fr"
+    : "repeat(3, minmax(0, 1fr))";
+
   if (pageLoading) {
     return (
       <div
@@ -482,6 +535,8 @@ export default function AdminPage() {
           color: "#7c3aed",
           fontSize: 20,
           fontWeight: 800,
+          padding: 20,
+          textAlign: "center",
         }}
       >
         Loading admin panel...
@@ -495,6 +550,7 @@ export default function AdminPage() {
         minHeight: "100vh",
         background: "linear-gradient(180deg, #faf5ff 0%, #f4f7ff 100%)",
         color: "#0f172a",
+        overflowX: "hidden",
       }}
     >
       <header
@@ -511,14 +567,14 @@ export default function AdminPage() {
           style={{
             maxWidth: 1400,
             margin: "0 auto",
-            padding: "18px 24px",
+            padding: isPhone ? "14px 12px" : "18px 24px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: 14,
+            gap: 12,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             <div
               style={{
                 width: 48,
@@ -532,21 +588,45 @@ export default function AdminPage() {
                 fontWeight: 800,
                 fontSize: 20,
                 boxShadow: "0 10px 20px rgba(124, 58, 237, 0.25)",
+                flexShrink: 0,
               }}
             >
               A
             </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800 }}>
+
+            <div style={{ minWidth: 0 }}>
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: isPhone ? 22 : isTabletOrBelow ? 24 : 28,
+                  fontWeight: 800,
+                  wordBreak: "break-word",
+                }}
+              >
                 Admin Panel
               </h1>
-              <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: 14 }}>
+              <p
+                style={{
+                  margin: "4px 0 0 0",
+                  color: "#64748b",
+                  fontSize: isPhone ? 13 : 14,
+                  lineHeight: 1.4,
+                  wordBreak: "break-word",
+                }}
+              >
                 ALITA system maintenance dashboard
               </p>
             </div>
           </div>
 
-          <button onClick={logout} style={dangerButton}>
+          <button
+            onClick={logout}
+            style={{
+              ...dangerButton,
+              flexShrink: 0,
+              padding: isPhone ? "10px 14px" : "12px 16px",
+            }}
+          >
             Logout
           </button>
         </div>
@@ -556,10 +636,11 @@ export default function AdminPage() {
         style={{
           maxWidth: 1400,
           margin: "0 auto",
-          padding: 24,
+          padding: isPhone ? 12 : 24,
           display: "grid",
-          gridTemplateColumns: "260px 1fr",
+          gridTemplateColumns: pageColumns,
           gap: 20,
+          alignItems: "start",
         }}
       >
         <aside
@@ -570,6 +651,9 @@ export default function AdminPage() {
             padding: 16,
             height: "fit-content",
             boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
+            position: isTabletOrBelow ? "static" : "sticky",
+            top: 96,
+            minWidth: 0,
           }}
         >
           <p
@@ -589,31 +673,36 @@ export default function AdminPage() {
             <MenuButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")}>
               Overview
             </MenuButton>
+
             <MenuButton active={activeTab === "account"} onClick={() => setActiveTab("account")}>
               Admin Profile
             </MenuButton>
+
             <MenuButton active={activeTab === "teachers"} onClick={() => setActiveTab("teachers")}>
               Teacher Accounts
             </MenuButton>
+
             <MenuButton active={activeTab === "students"} onClick={() => setActiveTab("students")}>
               Student Accounts
             </MenuButton>
+
             <MenuButton active={activeTab === "quizzes"} onClick={() => setActiveTab("quizzes")}>
               Quiz Management
             </MenuButton>
           </div>
         </aside>
 
-        <main style={{ display: "grid", gap: 20 }}>
+        <main style={{ display: "grid", gap: 20, minWidth: 0 }}>
           {activeTab === "overview" && (
             <SectionCard
               title="System Overview"
               subtitle="Quick summary of teachers, students, and quizzes."
+              isTabletOrBelow={isTabletOrBelow}
             >
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                  gridTemplateColumns: overviewColumns,
                   gap: 12,
                 }}
               >
@@ -630,12 +719,20 @@ export default function AdminPage() {
                       border: "1px solid #e9d5ff",
                       borderRadius: 14,
                       padding: 16,
+                      minWidth: 0,
                     }}
                   >
                     <p style={{ margin: 0, color: "#64748b", fontWeight: 700, fontSize: 13 }}>
                       {item.label}
                     </p>
-                    <p style={{ margin: "10px 0 0 0", fontSize: 30, fontWeight: 800 }}>
+                    <p
+                      style={{
+                        margin: "10px 0 0 0",
+                        fontSize: isPhone ? 24 : 30,
+                        fontWeight: 800,
+                        wordBreak: "break-word",
+                      }}
+                    >
                       {item.value}
                     </p>
                   </div>
@@ -648,11 +745,12 @@ export default function AdminPage() {
             <SectionCard
               title="Admin Profile Settings"
               subtitle="Update the admin profile, email, and recovery email."
+              isTabletOrBelow={isTabletOrBelow}
             >
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gridTemplateColumns: accountColumns,
                   gap: 12,
                 }}
               >
@@ -687,11 +785,27 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div style={{ marginTop: 14, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                <button onClick={updateAdminAccount} style={primaryButton}>
+              <div
+                style={{
+                  marginTop: 14,
+                  display: "flex",
+                  flexDirection: isPhone ? "column" : "row",
+                  gap: 12,
+                  alignItems: isPhone ? "stretch" : "center",
+                }}
+              >
+                <button
+                  onClick={updateAdminAccount}
+                  style={{ ...primaryButton, width: isPhone ? "100%" : "auto" }}
+                >
                   Save Admin Profile
                 </button>
-                <p style={{ margin: 0, fontWeight: 700, color: statusColor }}>{statusMessage}</p>
+
+                {!!statusMessage && (
+                  <p style={{ margin: 0, fontWeight: 700, color: statusColor, wordBreak: "break-word" }}>
+                    {statusMessage}
+                  </p>
+                )}
               </div>
 
               <div
@@ -701,21 +815,20 @@ export default function AdminPage() {
                   borderRadius: 14,
                   background: "#faf5ff",
                   border: "1px solid #e9d5ff",
+                  minWidth: 0,
                 }}
               >
-                <p style={{ margin: 0, fontWeight: 700, color: "#334155" }}>
-                  Current Admin:
-                </p>
-                <p style={{ margin: "8px 0 0 0", color: "#7c3aed", fontWeight: 800 }}>
+                <p style={{ margin: 0, fontWeight: 700, color: "#334155" }}>Current Admin:</p>
+                <p style={{ margin: "8px 0 0 0", color: "#7c3aed", fontWeight: 800, wordBreak: "break-word" }}>
                   {currentAdmin?.full_name || "No admin loaded"}
                 </p>
-                <p style={{ margin: "8px 0 0 0", color: "#475569", fontWeight: 700 }}>
+                <p style={{ margin: "8px 0 0 0", color: "#475569", fontWeight: 700, wordBreak: "break-word" }}>
                   Username: {currentAdmin?.username || "-"}
                 </p>
-                <p style={{ margin: "8px 0 0 0", color: "#475569", fontWeight: 700 }}>
+                <p style={{ margin: "8px 0 0 0", color: "#475569", fontWeight: 700, wordBreak: "break-word" }}>
                   Email: {currentAdmin?.email || "-"}
                 </p>
-                <p style={{ margin: "8px 0 0 0", color: "#475569", fontWeight: 700 }}>
+                <p style={{ margin: "8px 0 0 0", color: "#475569", fontWeight: 700, wordBreak: "break-word" }}>
                   Recovery Email: {currentAdmin?.recovery_email || "-"}
                 </p>
               </div>
@@ -726,11 +839,12 @@ export default function AdminPage() {
             <SectionCard
               title="Teacher Account Management"
               subtitle="Create and delete teacher accounts."
+              isTabletOrBelow={isTabletOrBelow}
             >
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                  gridTemplateColumns: teacherFormColumns,
                   gap: 12,
                 }}
               >
@@ -754,78 +868,98 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div style={{ marginTop: 14, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                <button onClick={addTeacher} style={primaryButton}>
+              <div
+                style={{
+                  marginTop: 14,
+                  display: "flex",
+                  flexDirection: isPhone ? "column" : "row",
+                  gap: 12,
+                  alignItems: isPhone ? "stretch" : "center",
+                }}
+              >
+                <button
+                  onClick={addTeacher}
+                  style={{ ...primaryButton, width: isPhone ? "100%" : "auto" }}
+                >
                   Add Teacher
                 </button>
-                <p style={{ margin: 0, fontWeight: 700, color: statusColor }}>{statusMessage}</p>
+
+                {!!statusMessage && (
+                  <p style={{ margin: 0, fontWeight: 700, color: statusColor, wordBreak: "break-word" }}>
+                    {statusMessage}
+                  </p>
+                )}
               </div>
 
-              <div style={{ marginTop: 20, overflowX: "auto" }}>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "separate",
-                    borderSpacing: 0,
-                    border: "1px solid #e9d5ff",
-                    borderRadius: 14,
-                    overflow: "hidden",
-                  }}
-                >
-                  <thead style={{ background: "#faf5ff" }}>
-                    <tr>
-                      {["Name", "Username", "Password", "Actions"].map((head) => (
-                        <th
-                          key={head}
-                          style={{
-                            padding: "14px 12px",
-                            textAlign: "left",
-                            fontSize: 14,
-                            color: "#334155",
-                            borderBottom: "1px solid #e9d5ff",
-                          }}
-                        >
-                          {head}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {teachers.map((teacher, index) => (
-                      <tr key={teacher.id} style={{ background: index % 2 === 0 ? "#fff" : "#fcfcff" }}>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9", fontWeight: 600 }}>
-                          {teacher.full_name}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          {teacher.username}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          {teacher.password}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          <button onClick={() => deleteTeacher(teacher.id)} style={dangerButton}>
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {teachers.length === 0 && (
+              <div style={{ marginTop: 20 }}>
+                <ScrollTable>
+                  <table
+                    style={{
+                      width: "100%",
+                      minWidth: 700,
+                      borderCollapse: "separate",
+                      borderSpacing: 0,
+                      border: "1px solid #e9d5ff",
+                      borderRadius: 14,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <thead style={{ background: "#faf5ff" }}>
                       <tr>
-                        <td
-                          colSpan={4}
-                          style={{
-                            padding: 24,
-                            textAlign: "center",
-                            color: "#64748b",
-                            fontWeight: 600,
-                          }}
-                        >
-                          No teachers yet.
-                        </td>
+                        {["Name", "Username", "Password", "Actions"].map((head) => (
+                          <th
+                            key={head}
+                            style={{
+                              padding: "14px 12px",
+                              textAlign: "left",
+                              fontSize: 14,
+                              color: "#334155",
+                              borderBottom: "1px solid #e9d5ff",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {head}
+                          </th>
+                        ))}
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {teachers.map((teacher, index) => (
+                        <tr key={teacher.id} style={{ background: index % 2 === 0 ? "#fff" : "#fcfcff" }}>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9", fontWeight: 600 }}>
+                            {teacher.full_name}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            {teacher.username}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            {teacher.password}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            <button onClick={() => deleteTeacher(teacher.id)} style={dangerButton}>
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {teachers.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            style={{
+                              padding: 24,
+                              textAlign: "center",
+                              color: "#64748b",
+                              fontWeight: 600,
+                            }}
+                          >
+                            No teachers yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </ScrollTable>
               </div>
             </SectionCard>
           )}
@@ -834,8 +968,9 @@ export default function AdminPage() {
             <SectionCard
               title="Student Accounts"
               subtitle="View and delete all students in the system."
+              isTabletOrBelow={isTabletOrBelow}
             >
-              <div style={{ overflowX: "auto" }}>
+              <ScrollTable>
                 <table
                   style={{
                     width: "100%",
@@ -858,6 +993,7 @@ export default function AdminPage() {
                             fontSize: 14,
                             color: "#334155",
                             borderBottom: "1px solid #e9d5ff",
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {head}
@@ -907,7 +1043,7 @@ export default function AdminPage() {
                     )}
                   </tbody>
                 </table>
-              </div>
+              </ScrollTable>
             </SectionCard>
           )}
 
@@ -915,8 +1051,9 @@ export default function AdminPage() {
             <SectionCard
               title="Quiz Management"
               subtitle="View and delete quizzes for maintenance."
+              isTabletOrBelow={isTabletOrBelow}
             >
-              <div style={{ overflowX: "auto" }}>
+              <ScrollTable>
                 <table
                   style={{
                     width: "100%",
@@ -939,6 +1076,7 @@ export default function AdminPage() {
                             fontSize: 14,
                             color: "#334155",
                             borderBottom: "1px solid #e9d5ff",
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {head}
@@ -991,7 +1129,7 @@ export default function AdminPage() {
                     )}
                   </tbody>
                 </table>
-              </div>
+              </ScrollTable>
             </SectionCard>
           )}
         </main>
