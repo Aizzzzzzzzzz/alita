@@ -206,6 +206,8 @@ export default function TeacherPage() {
 
   const [screenWidth, setScreenWidth] = useState(1440);
   const [students, setStudents] = useState<Student[]>([]);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -509,7 +511,23 @@ export default function TeacherPage() {
     });
   }
 
-  async function addStudent() {
+  function resetStudentForm(message?: string, color?: string) {
+    setForm({
+      name: "",
+      username: "",
+      password: "",
+      grade: "Grade 3",
+      section: "",
+    });
+    setEditingStudentId(null);
+
+    if (message) {
+      setStatusMessage(message);
+      setStatusColor(color || "#16a34a");
+    }
+  }
+
+  async function saveStudent() {
     if (
       form.name.trim() === "" ||
       form.username.trim() === "" ||
@@ -530,36 +548,50 @@ export default function TeacherPage() {
       return;
     }
 
-    const { error } = await supabase.from("students").insert([
-      {
-        teacher_id: teacherId,
-        full_name: form.name,
-        username: form.username,
-        password: form.password,
-        grade_level: form.grade,
-        section: form.section,
-        avatar: "🧒",
-      },
-    ]);
+    if (editingStudentId) {
+      const { error } = await supabase
+        .from("students")
+        .update({
+          full_name: form.name,
+          username: form.username,
+          password: form.password,
+          grade_level: form.grade,
+          section: form.section,
+        })
+        .eq("id", editingStudentId)
+        .eq("teacher_id", teacherId);
 
-    if (error) {
-      setStatusMessage(error.message);
-      setStatusColor("#dc2626");
-      return;
+      if (error) {
+        setStatusMessage(error.message);
+        setStatusColor("#dc2626");
+        return;
+      }
+
+      resetStudentForm("Student account updated successfully.", "#16a34a");
+    } else {
+      const { error } = await supabase.from("students").insert([
+        {
+          teacher_id: teacherId,
+          full_name: form.name,
+          username: form.username,
+          password: form.password,
+          grade_level: form.grade,
+          section: form.section,
+          avatar: "🧒",
+        },
+      ]);
+
+      if (error) {
+        setStatusMessage(error.message);
+        setStatusColor("#dc2626");
+        return;
+      }
+
+      resetStudentForm("Student account added successfully.", "#16a34a");
     }
 
-    setForm({
-      name: "",
-      username: "",
-      password: "",
-      grade: "Grade 3",
-      section: "",
-    });
-
-    setStatusMessage("Student account added successfully.");
-    setStatusColor("#16a34a");
-    loadStudents();
-    loadProgressData();
+    await loadStudents();
+    await loadProgressData();
   }
 
   async function deleteStudent(id: string) {
@@ -582,8 +614,13 @@ export default function TeacherPage() {
       const { error: studentError } = await supabase.from("students").delete().eq("id", id);
       if (studentError) throw studentError;
 
-      setStatusMessage("Student account deleted.");
-      setStatusColor("#dc2626");
+      if (editingStudentId === id) {
+        resetStudentForm("Deleted student account that was being edited.", "#dc2626");
+      } else {
+        setStatusMessage("Student account deleted.");
+        setStatusColor("#dc2626");
+      }
+
       loadStudents();
       loadProgressData();
     } catch (error: any) {
@@ -593,6 +630,7 @@ export default function TeacherPage() {
   }
 
   function editStudent(student: Student) {
+    setEditingStudentId(student.id);
     setForm({
       name: student.name,
       username: student.username,
@@ -601,8 +639,12 @@ export default function TeacherPage() {
       section: student.section,
     });
 
-    setStatusMessage("Student data loaded for editing. Delete old one and add updated one.");
+    setStatusMessage("Student data loaded. You can now update this account.");
     setStatusColor("#2563eb");
+  }
+
+  function cancelEditStudent() {
+    resetStudentForm("Edit cancelled.", "#64748b");
   }
 
   async function createSpecialQuiz() {
@@ -1158,9 +1200,19 @@ export default function TeacherPage() {
                   gap: 12,
                 }}
               >
-                <button onClick={addStudent} style={{ ...primaryButton, width: isTabletOrBelow ? "100%" : "auto" }}>
-                  Add Student
+                <button onClick={saveStudent} style={{ ...primaryButton, width: isTabletOrBelow ? "100%" : "auto" }}>
+                  {editingStudentId ? "Update Student" : "Add Student"}
                 </button>
+
+                {editingStudentId && (
+                  <button
+                    onClick={cancelEditStudent}
+                    style={{ ...neutralButton, width: isTabletOrBelow ? "100%" : "auto" }}
+                  >
+                    Cancel Edit
+                  </button>
+                )}
+
                 {!!statusMessage && (
                   <p style={{ margin: 0, fontWeight: 700, color: statusColor, wordBreak: "break-word" }}>{statusMessage}</p>
                 )}
