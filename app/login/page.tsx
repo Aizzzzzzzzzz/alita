@@ -83,7 +83,7 @@ export default function LoginPage() {
 
           if (nextFailedTries >= 3) {
             const goToForgotPassword = window.confirm(
-              "FORGET PASS? YES OR NO"
+              "Forget password?"
             );
 
             if (goToForgotPassword) {
