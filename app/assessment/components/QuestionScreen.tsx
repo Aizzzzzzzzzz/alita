@@ -13,7 +13,8 @@ type Props = {
   onBack: () => void;
   onRead: () => void;
   onTryAgain: () => void;
-  onVoice: () => void;
+  onVoiceStart: () => void;
+  onVoiceEnd: () => void;
 };
 
 export default function QuestionScreen({
@@ -31,8 +32,11 @@ export default function QuestionScreen({
   onBack,
   onRead,
   onTryAgain,
-  onVoice,
+  onVoiceStart,
+  onVoiceEnd,
 }: Props) {
+  const micDisabled = !speechSupported || showTryAgain;
+
   return (
     <div
       style={{
@@ -150,38 +154,75 @@ export default function QuestionScreen({
               style={{
                 marginTop: "20px",
                 display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <button
-                onClick={onVoice}
-                disabled={!speechSupported || isListening || showTryAgain}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  if (micDisabled || isListening) return;
+                  onVoiceStart();
+                }}
+                onPointerUp={(e) => {
+                  e.preventDefault();
+                  if (!isListening) return;
+                  onVoiceEnd();
+                }}
+                onPointerCancel={(e) => {
+                  e.preventDefault();
+                  if (!isListening) return;
+                  onVoiceEnd();
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+                disabled={micDisabled}
                 style={{
-                  width: "clamp(100px, 22vw, 150px)",
-                  height: "clamp(100px, 22vw, 150px)",
-                  border: "none",
-                  background: "transparent",
-                  padding: 0,
-                  cursor: !speechSupported || isListening || showTryAgain ? "not-allowed" : "pointer",
-                  transform: isListening ? "scale(1.04)" : "scale(1)",
+                  width: "clamp(108px, 22vw, 158px)",
+                  height: "clamp(108px, 22vw, 158px)",
+                  border: isListening ? "6px solid #22c55e" : "6px solid transparent",
+                  borderRadius: "999px",
+                  background: isListening ? "rgba(34,197,94,0.18)" : "transparent",
+                  padding: "8px",
+                  cursor: micDisabled ? "not-allowed" : "pointer",
+                  transform: isListening ? "scale(1.08)" : "scale(1)",
                   transition: "0.2s ease",
                   filter: isListening
-                    ? "drop-shadow(0 0 18px rgba(255,90,90,0.55))"
+                    ? "drop-shadow(0 0 20px rgba(34,197,94,0.75))"
                     : "drop-shadow(0 10px 18px rgba(0,0,0,0.28))",
+                  userSelect: "none",
+                  touchAction: "none",
+                  outline: "none",
                 }}
-                title="Start voice answer"
+                title="Hold to answer by voice"
               >
                 <img
                   src="/ui/assessment/mic.png"
                   alt="Microphone button"
+                  draggable={false}
                   style={{
                     width: "100%",
                     height: "100%",
                     objectFit: "contain",
                     imageRendering: "pixelated",
+                    pointerEvents: "none",
+                    userSelect: "none",
                   }}
                 />
               </button>
+
+              <p
+                style={{
+                  marginTop: "10px",
+                  fontSize: "clamp(12px, 2vw, 16px)",
+                  fontWeight: 900,
+                  color: isListening ? "#22c55e" : "#f8f3df",
+                  textShadow: "2px 2px 0 #4a2a18",
+                  letterSpacing: "0.6px",
+                }}
+              >
+                {isListening ? "RELEASE TO SUBMIT" : "HOLD TO SPEAK"}
+              </p>
             </div>
 
             <div className="question-status-grid">

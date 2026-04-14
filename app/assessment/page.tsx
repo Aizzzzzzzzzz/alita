@@ -18,6 +18,9 @@ import SubjectLevels from "./components/SubjectLevels";
 export default function AssessmentPage() {
   const router = useRouter();
   const hasAutoReadRef = useRef(false);
+  const recognitionRef = useRef<any>(null);
+  const latestTranscriptRef = useRef("");
+  const isStoppingRef = useRef(false);
 
   const [studentName, setStudentName] = useState("Student");
   const [studentAvatar, setStudentAvatar] = useState("🧒");
@@ -196,6 +199,15 @@ export default function AssessmentPage() {
     showSpecialResult,
   ]);
 
+  useEffect(() => {
+    return () => {
+      try {
+        recognitionRef.current?.stop();
+      } catch {}
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    };
+  }, []);
+
   async function syncProgressToSupabase(updatedProgress: ProgressData, activeStudentId?: string) {
     const targetStudentId = activeStudentId || studentId;
     if (!targetStudentId) return;
@@ -247,6 +259,8 @@ export default function AssessmentPage() {
     setVoiceMessage("");
     setAiPromptText("");
     setShowTryAgain(false);
+    latestTranscriptRef.current = "";
+    isStoppingRef.current = false;
     hasAutoReadRef.current = false;
   }
 
@@ -301,6 +315,10 @@ export default function AssessmentPage() {
   }
 
   function logout() {
+    try {
+      recognitionRef.current?.stop();
+    } catch {}
+
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     localStorage.removeItem("alitaUser");
     localStorage.removeItem("studentId");
@@ -315,7 +333,11 @@ export default function AssessmentPage() {
   }
 
   function normalizeText(text: string) {
-    return text.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/\s+/g, " ");
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, " ");
   }
 
   function getCurrentLevelKey() {
@@ -332,7 +354,17 @@ export default function AssessmentPage() {
     setShowTryAgain(false);
     setEarnedStars(0);
     setAiPromptText("");
+    latestTranscriptRef.current = "";
+    isStoppingRef.current = false;
     hasAutoReadRef.current = false;
+
+    try {
+      recognitionRef.current?.stop();
+    } catch {}
+
+    recognitionRef.current = null;
+    setIsListening(false);
+
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }
 
@@ -391,21 +423,63 @@ export default function AssessmentPage() {
 
   function mapVoiceToPremadeChoice(transcript: string) {
     if (!currentQuestion) return "";
+
     const spoken = normalizeText(transcript);
 
     for (const choice of currentQuestion.choices) {
-      if (normalizeText(choice) === spoken) return choice;
+      const normalizedChoice = normalizeText(choice);
+
+      if (normalizedChoice === spoken) return choice;
+      if (spoken.includes(normalizedChoice)) return choice;
+      if (normalizedChoice.includes(spoken) && spoken.length >= 2) return choice;
     }
 
-    if (["a", "letter a", "option a", "first"].includes(spoken)) return currentQuestion.choices[0];
-    if (["b", "letter b", "option b", "second"].includes(spoken)) return currentQuestion.choices[1];
-    if (["c", "letter c", "option c", "third"].includes(spoken)) return currentQuestion.choices[2];
-    if (["d", "letter d", "option d", "fourth"].includes(spoken)) return currentQuestion.choices[3];
+    if (
+      spoken === "a" ||
+      spoken === "letter a" ||
+      spoken === "option a" ||
+      spoken === "first" ||
+      spoken === "number one"
+    ) {
+      return currentQuestion.choices[0];
+    }
+
+    if (
+      spoken === "b" ||
+      spoken === "letter b" ||
+      spoken === "option b" ||
+      spoken === "second" ||
+      spoken === "number two"
+    ) {
+      return currentQuestion.choices[1];
+    }
+
+    if (
+      spoken === "c" ||
+      spoken === "letter c" ||
+      spoken === "option c" ||
+      spoken === "third" ||
+      spoken === "number three"
+    ) {
+      return currentQuestion.choices[2];
+    }
+
+    if (
+      spoken === "d" ||
+      spoken === "letter d" ||
+      spoken === "option d" ||
+      spoken === "fourth" ||
+      spoken === "number four"
+    ) {
+      return currentQuestion.choices[3];
+    }
+
     return "";
   }
 
   function mapVoiceToSpecialChoice(transcript: string) {
     if (!currentSpecialQuestion) return "";
+
     const spoken = normalizeText(transcript);
     const choices = [
       currentSpecialQuestion.choice_a,
@@ -415,13 +489,53 @@ export default function AssessmentPage() {
     ];
 
     for (const choice of choices) {
-      if (normalizeText(choice) === spoken) return choice;
+      const normalizedChoice = normalizeText(choice);
+
+      if (normalizedChoice === spoken) return choice;
+      if (spoken.includes(normalizedChoice)) return choice;
+      if (normalizedChoice.includes(spoken) && spoken.length >= 2) return choice;
     }
 
-    if (["a", "letter a", "option a", "first"].includes(spoken)) return choices[0];
-    if (["b", "letter b", "option b", "second"].includes(spoken)) return choices[1];
-    if (["c", "letter c", "option c", "third"].includes(spoken)) return choices[2];
-    if (["d", "letter d", "option d", "fourth"].includes(spoken)) return choices[3];
+    if (
+      spoken === "a" ||
+      spoken === "letter a" ||
+      spoken === "option a" ||
+      spoken === "first" ||
+      spoken === "number one"
+    ) {
+      return choices[0];
+    }
+
+    if (
+      spoken === "b" ||
+      spoken === "letter b" ||
+      spoken === "option b" ||
+      spoken === "second" ||
+      spoken === "number two"
+    ) {
+      return choices[1];
+    }
+
+    if (
+      spoken === "c" ||
+      spoken === "letter c" ||
+      spoken === "option c" ||
+      spoken === "third" ||
+      spoken === "number three"
+    ) {
+      return choices[2];
+    }
+
+    if (
+      spoken === "d" ||
+      spoken === "letter d" ||
+      spoken === "option d" ||
+      spoken === "fourth" ||
+      spoken === "number four"
+    ) {
+      return choices[3];
+    }
+
     return "";
   }
 
@@ -496,6 +610,7 @@ export default function AssessmentPage() {
         setHeardText("");
         setVoiceMessage("");
         setAiPromptText("");
+        latestTranscriptRef.current = "";
         hasAutoReadRef.current = false;
       }, 900);
     } else {
@@ -543,66 +658,145 @@ export default function AssessmentPage() {
     else handleWrongSpecialAnswer(choice);
   }
 
+  async function processTranscript(finalTranscript: string) {
+    const transcript = finalTranscript.trim();
+
+    setHeardText(transcript);
+    setIsListening(false);
+
+    if (!transcript) {
+      setVoiceMessage("No voice captured. Tap the mic and try again.");
+      setAiPromptText("I didn't hear anything. Tap the mic and try again.");
+      return;
+    }
+
+    if (viewMode === "premade") {
+      const matchedChoice = mapVoiceToPremadeChoice(transcript);
+
+      if (matchedChoice) {
+        setRecognizedChoice(matchedChoice);
+        setVoiceMessage(`Recognized: ${matchedChoice}`);
+        setAiPromptText(`I heard ${matchedChoice}. Let me check your answer.`);
+        await submitPremadeAnswer(matchedChoice);
+      } else {
+        setRecognizedChoice("");
+        setVoiceMessage("Voice detected, but no matching choice was found.");
+        setAiPromptText("I heard your voice, but I could not match it to the choices.");
+      }
+    } else {
+      const matchedChoice = mapVoiceToSpecialChoice(transcript);
+
+      if (matchedChoice) {
+        setRecognizedChoice(matchedChoice);
+        setVoiceMessage(`Recognized: ${matchedChoice}`);
+        setAiPromptText(`I heard ${matchedChoice}. Let me check your answer.`);
+        await submitSpecialAnswer(matchedChoice);
+      } else {
+        setRecognizedChoice("");
+        setVoiceMessage("Voice detected, but no matching choice was found.");
+        setAiPromptText("I heard your voice, but I could not match it to the choices.");
+      }
+    }
+  }
+
   function startVoiceRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
       setVoiceMessage("Voice recognition is not supported on this browser.");
+      setAiPromptText("Voice recognition is not supported on this browser.");
       return;
     }
 
+    if (recognitionRef.current || isListening || showTryAgain) return;
+
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 
+    latestTranscriptRef.current = "";
+    isStoppingRef.current = false;
+
     const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+
     recognition.lang = selectedSubject === "Filipino" ? "fil-PH" : "en-US";
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
     setIsListening(true);
-    setVoiceMessage("Listening...");
-    setAiPromptText("Listening...");
+    setVoiceMessage("Listening... tap the mic again to stop.");
+    setAiPromptText("I'm listening...");
     setHeardText("");
+    setRecognizedChoice("");
 
     recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setHeardText(transcript);
+      let transcript = "";
 
-      if (viewMode === "premade") {
-        const matchedChoice = mapVoiceToPremadeChoice(transcript);
-        if (matchedChoice) {
-          setRecognizedChoice(matchedChoice);
-          setVoiceMessage(`Recognized: ${matchedChoice}`);
-          setAiPromptText(`I heard ${matchedChoice}. Let me check your answer.`);
-          setTimeout(() => submitPremadeAnswer(matchedChoice), 400);
-        } else {
-          setRecognizedChoice("");
-          setVoiceMessage("Voice detected, but no matching choice was found.");
-          setAiPromptText("I heard your voice, but I could not match it to A, B, C, or D.");
-        }
-      } else {
-        const matchedChoice = mapVoiceToSpecialChoice(transcript);
-        if (matchedChoice) {
-          setRecognizedChoice(matchedChoice);
-          setVoiceMessage(`Recognized: ${matchedChoice}`);
-          setAiPromptText(`I heard ${matchedChoice}. Let me check your answer.`);
-          setTimeout(() => submitSpecialAnswer(matchedChoice), 400);
-        } else {
-          setRecognizedChoice("");
-          setVoiceMessage("Voice detected, but no matching choice was found.");
-          setAiPromptText("I heard your voice, but I could not match it to A, B, C, or D.");
-        }
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript + " ";
       }
+
+      const cleanTranscript = transcript.trim();
+      latestTranscriptRef.current = cleanTranscript;
+      setHeardText(cleanTranscript);
     };
 
-    recognition.onerror = () => {
-      setVoiceMessage("Voice recognition failed. Please try again.");
-      setAiPromptText("Voice recognition failed. Please try again.");
+    recognition.onerror = (event: any) => {
+      const error = event?.error || "unknown";
+
+      if (error === "no-speech") {
+        setVoiceMessage("No speech detected. Tap the mic and try again.");
+        setAiPromptText("I didn't hear anything.");
+      } else if (error === "not-allowed" || error === "service-not-allowed") {
+        setVoiceMessage("Microphone permission was denied.");
+        setAiPromptText("Please allow microphone access.");
+      } else {
+        setVoiceMessage("Voice recognition failed. Please try again.");
+        setAiPromptText("Voice recognition failed. Please try again.");
+      }
+
       setIsListening(false);
+      recognitionRef.current = null;
+      isStoppingRef.current = false;
     };
 
-    recognition.onend = () => setIsListening(false);
-    recognition.start();
+    recognition.onend = async () => {
+      const finalTranscript = latestTranscriptRef.current.trim();
+
+      recognitionRef.current = null;
+      setIsListening(false);
+
+      if (!isStoppingRef.current) return;
+
+      isStoppingRef.current = false;
+      await processTranscript(finalTranscript);
+    };
+
+    try {
+      recognition.start();
+    } catch {
+      recognitionRef.current = null;
+      setIsListening(false);
+      setVoiceMessage("Could not start voice recognition.");
+      setAiPromptText("Could not start voice recognition.");
+    }
+  }
+
+  function stopVoiceRecognition() {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+
+    isStoppingRef.current = true;
+    setVoiceMessage("Processing your answer...");
+    setAiPromptText("Let me check what I heard...");
+
+    try {
+      recognition.stop();
+    } catch {
+      isStoppingRef.current = false;
+      setIsListening(false);
+      recognitionRef.current = null;
+    }
   }
 
   function tryAgain() {
@@ -612,7 +806,16 @@ export default function AssessmentPage() {
     setWrongAttempts(0);
     setShowTryAgain(false);
     setAiPromptText("");
+    latestTranscriptRef.current = "";
+    isStoppingRef.current = false;
     hasAutoReadRef.current = false;
+
+    try {
+      recognitionRef.current?.stop();
+    } catch {}
+
+    recognitionRef.current = null;
+    setIsListening(false);
 
     if (viewMode === "premade") readQuestionAndChoices();
     else readSpecialQuestionAndChoices();
@@ -643,7 +846,16 @@ export default function AssessmentPage() {
     setVoiceMessage("");
     setAiPromptText("");
     setShowTryAgain(false);
+    latestTranscriptRef.current = "";
+    isStoppingRef.current = false;
     hasAutoReadRef.current = false;
+
+    try {
+      recognitionRef.current?.stop();
+    } catch {}
+
+    recognitionRef.current = null;
+    setIsListening(false);
   }
 
   return (
@@ -716,7 +928,8 @@ export default function AssessmentPage() {
                 onBack={goBackToLevels}
                 onRead={readQuestionAndChoices}
                 onTryAgain={tryAgain}
-                onVoice={startVoiceRecognition}
+                onVoiceStart={startVoiceRecognition}
+                onVoiceEnd={stopVoiceRecognition}
               />
             )}
 
@@ -771,7 +984,8 @@ export default function AssessmentPage() {
                 onBack={backToSpecialQuizList}
                 onRead={readSpecialQuestionAndChoices}
                 onTryAgain={tryAgain}
-                onVoice={startVoiceRecognition}
+                onVoiceStart={startVoiceRecognition}
+                onVoiceEnd={stopVoiceRecognition}
               />
             )}
 
