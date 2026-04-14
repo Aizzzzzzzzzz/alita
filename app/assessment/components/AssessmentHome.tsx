@@ -191,12 +191,20 @@ export default function AssessmentHome({
           </div>
 
           <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-            {SUBJECTS.map((subject) => (
-              <button key={subject.name} onClick={() => onOpenSubject(subject.name)} className="group">
+            {SUBJECTS.map((subject, index) => (
+              <button
+                key={subject.name}
+                onClick={() => onOpenSubject(subject.name)}
+                className="group"
+                style={{
+                  animation: `subjectFloat 2.8s ease-in-out infinite`,
+                  animationDelay: `${index * 0.25}s`,
+                }}
+              >
                 <img
                   src={subject.image}
                   alt={subject.name}
-                  className="mx-auto w-full max-w-[260px] object-contain transition duration-300 group-hover:scale-105 group-active:scale-95 drop-shadow-[0_16px_0_rgba(0,0,0,0.5)] group-hover:drop-shadow-[0_10px_30px_rgba(0,0,0,0.7)]"
+                  className="mx-auto w-full max-w-[260px] object-contain transition duration-300 group-hover:scale-110 group-active:scale-95 drop-shadow-[0_16px_0_rgba(0,0,0,0.5)] group-hover:drop-shadow-[0_10px_30px_rgba(0,0,0,0.7)]"
                 />
               </button>
             ))}
