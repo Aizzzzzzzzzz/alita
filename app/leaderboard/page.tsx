@@ -390,8 +390,6 @@ export default function LeaderboardPage() {
                     Next ▶
                   </PixelButton>
                 </div>
-
-               
               </div>
 
               {myRow && (
