@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [messageColor, setMessageColor] = useState("#7f1d1d");
   const [isLoading, setIsLoading] = useState(false);
+  const [adminFailedTries, setAdminFailedTries] = useState(0);
 
   const playSound = (src: string, volume = 0.35) => {
     try {
@@ -59,6 +60,9 @@ export default function LoginPage() {
         });
 
         if (!error && data.user) {
+          // reset failed tries when admin logs in successfully
+          setAdminFailedTries(0);
+
           localStorage.setItem("alitaUser", "admin");
           localStorage.setItem("adminId", data.user.id);
           localStorage.removeItem("teacherId");
@@ -72,8 +76,37 @@ export default function LoginPage() {
             router.push("/admin");
           }, 700);
           return;
+        } else {
+          // count only failed admin login attempts
+          const nextFailedTries = adminFailedTries + 1;
+          setAdminFailedTries(nextFailedTries);
+
+          if (nextFailedTries >= 3) {
+            const goToForgotPassword = window.confirm(
+              "FORGET PASS? YES OR NO"
+            );
+
+            if (goToForgotPassword) {
+              setAdminFailedTries(0);
+              router.push("/forgot-password");
+              return;
+            } else {
+              setMessage("Admin login failed.");
+              setMessageColor("#7f1d1d");
+              return;
+            }
+          }
+
+          setMessage(
+            `Admin login failed. Attempt ${nextFailedTries}/3.`
+          );
+          setMessageColor("#7f1d1d");
+          return;
         }
       }
+
+      // if not admin, reset admin failed tries
+      setAdminFailedTries(0);
 
       // =========================
       // 2) CHECK TEACHER
@@ -419,25 +452,6 @@ export default function LoginPage() {
               >
                 {isLoading ? "LOADING..." : "LOGIN"}
               </button>
-
-              <button
-                type="button"
-                onClick={() => router.push("/forgot-password")}
-                style={{
-                  marginTop: "8px",
-                  width: "100%",
-                  border: "4px solid #6a4526",
-                  background: "#d9ccff",
-                  color: "#3b246f",
-                  padding: "14px 12px",
-                  cursor: "pointer",
-                  fontFamily: "'Press Start 2P', cursive",
-                  fontSize: "11px",
-                  boxShadow: "0 6px 0 #9a85c8",
-                }}
-              >
-                FORGOT ADMIN PASSWORD?
-              </button>
             </div>
 
             <div
@@ -463,7 +477,8 @@ export default function LoginPage() {
               lineHeight: 1.8,
             }}
           >
-            The system will detect automatically if you are admin, teacher, or student
+            The system will detect automatically if you are admin, teacher, or
+            student
           </div>
         </div>
       </div>
