@@ -136,7 +136,7 @@ export default function QuestionScreen({
 
             <div className="question-action-row">
               <button onClick={onRead} className="question-action-btn">
-                🔊 HEAR QUESTION
+                🔊 REPLAY QUESTION
               </button>
 
               {showTryAgain && (

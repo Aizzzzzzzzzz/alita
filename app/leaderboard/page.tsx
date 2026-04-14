@@ -391,12 +391,7 @@ export default function LeaderboardPage() {
                   </PixelButton>
                 </div>
 
-                <PixelButton
-                  className="w-full md:w-auto"
-                  onClick={() => router.push("/assessment")}
-                >
-                  Close
-                </PixelButton>
+               
               </div>
 
               {myRow && (
