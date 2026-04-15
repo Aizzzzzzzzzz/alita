@@ -17,10 +17,13 @@ import SubjectLevels from "./components/SubjectLevels";
 
 export default function AssessmentPage() {
   const router = useRouter();
+
   const hasAutoReadRef = useRef(false);
   const recognitionRef = useRef<any>(null);
   const latestTranscriptRef = useRef("");
   const isStoppingRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
 
   const [studentName, setStudentName] = useState("Student");
   const [studentAvatar, setStudentAvatar] = useState("🧒");
@@ -204,7 +207,17 @@ export default function AssessmentPage() {
       try {
         recognitionRef.current?.stop();
       } catch {}
-      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+      }
+
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
     };
   }, []);
 
@@ -314,12 +327,25 @@ export default function AssessmentPage() {
     return inserted.id;
   }
 
+  function stopCurrentAudio() {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+  }
+
   function logout() {
     try {
       recognitionRef.current?.stop();
     } catch {}
 
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    stopCurrentAudio();
     localStorage.removeItem("alitaUser");
     localStorage.removeItem("studentId");
     localStorage.removeItem("teacherId");
@@ -364,8 +390,7 @@ export default function AssessmentPage() {
 
     recognitionRef.current = null;
     setIsListening(false);
-
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    stopCurrentAudio();
   }
 
   function openSubject(subject: string) {
@@ -391,17 +416,45 @@ export default function AssessmentPage() {
     return 0;
   }
 
-  function speakText(text: string) {
+  async function speakText(text: string) {
     setAiPromptText(text);
 
-    if (!("speechSynthesis" in window)) return;
+    try {
+      stopCurrentAudio();
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = selectedSubject === "Filipino" ? "fil-PH" : "en-US";
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    window.speechSynthesis.speak(utterance);
+      const res = await fetch("/api/voice", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        console.error("VOICE ERROR:", err);
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      audioUrlRef.current = url;
+
+      const audio = new Audio(url);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        if (audioUrlRef.current) {
+          URL.revokeObjectURL(audioUrlRef.current);
+          audioUrlRef.current = null;
+        }
+        audioRef.current = null;
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error("Voice crash:", err);
+    }
   }
 
   function readQuestionAndChoices() {
@@ -710,7 +763,7 @@ export default function AssessmentPage() {
 
     if (recognitionRef.current || isListening || showTryAgain) return;
 
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    stopCurrentAudio();
 
     latestTranscriptRef.current = "";
     isStoppingRef.current = false;
@@ -816,6 +869,7 @@ export default function AssessmentPage() {
 
     recognitionRef.current = null;
     setIsListening(false);
+    stopCurrentAudio();
 
     if (viewMode === "premade") readQuestionAndChoices();
     else readSpecialQuestionAndChoices();
@@ -856,6 +910,7 @@ export default function AssessmentPage() {
 
     recognitionRef.current = null;
     setIsListening(false);
+    stopCurrentAudio();
   }
 
   return (
