@@ -206,7 +206,7 @@ export default function AssessmentPage() {
     return () => {
       try {
         recognitionRef.current?.stop();
-      } catch {}
+      } catch { }
 
       if (audioRef.current) {
         audioRef.current.pause();
@@ -343,7 +343,7 @@ export default function AssessmentPage() {
   function logout() {
     try {
       recognitionRef.current?.stop();
-    } catch {}
+    } catch { }
 
     stopCurrentAudio();
     localStorage.removeItem("alitaUser");
@@ -386,7 +386,7 @@ export default function AssessmentPage() {
 
     try {
       recognitionRef.current?.stop();
-    } catch {}
+    } catch { }
 
     recognitionRef.current = null;
     setIsListening(false);
@@ -640,7 +640,18 @@ export default function AssessmentPage() {
 
   async function submitPremadeAnswer(choice: string) {
     if (!currentQuestion) return;
-    const isCorrect = normalizeText(choice) === normalizeText(currentQuestion.answer);
+
+    const normalizedChoice = normalizeText(choice);
+
+    const isCorrect = currentQuestion.answers.some((accepted) => {
+      const normalizedAccepted = normalizeText(accepted);
+      return (
+        normalizedChoice === normalizedAccepted ||
+        normalizedChoice.includes(normalizedAccepted) ||
+        normalizedAccepted.includes(normalizedChoice)
+      );
+    });
+
     if (isCorrect) await handleCorrectPremadeAnswer(choice);
     else handleWrongPremadeAnswer(choice);
   }
@@ -865,7 +876,7 @@ export default function AssessmentPage() {
 
     try {
       recognitionRef.current?.stop();
-    } catch {}
+    } catch { }
 
     recognitionRef.current = null;
     setIsListening(false);
@@ -906,7 +917,7 @@ export default function AssessmentPage() {
 
     try {
       recognitionRef.current?.stop();
-    } catch {}
+    } catch { }
 
     recognitionRef.current = null;
     setIsListening(false);

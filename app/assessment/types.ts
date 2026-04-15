@@ -1,7 +1,7 @@
 export type Question = {
   question: string;
   choices: string[];
-  answer: string;
+  answers: string[];
 };
 
 export type QuizData = {
