@@ -419,9 +419,9 @@ export default function ProfilePage() {
 
                   <Link
                     href="/rewards"
-                    className="inline-flex items-center justify-center rounded-[18px] border-[4px] border-[#355e2b] bg-[#8fd36b] px-5 py-3 font-black text-[#213b19] shadow-[4px_4px_0_#5d8f43] transition hover:-translate-y-1"
+                    className="inline-flex items-center justify-center rounded-[18px] border-[4px] border-[#355e2b] bg-[#8fd36b] px-3 py-3 font-black text-[#3b3b12] shadow-[4px_4px_0_#5d8f43] transition hover:-translate-y-1"
                   >
-                    GO TO SHOP
+                    GO TO REWARDS
                   </Link>
                 </div>
 

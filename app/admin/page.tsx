@@ -26,6 +26,7 @@ type StudentRow = {
   id: string;
   full_name: string;
   username: string;
+  password?: string;
   grade_level: string;
   section: string;
   teacher_id: string;
@@ -162,6 +163,8 @@ export default function AdminPage() {
     username: "",
     password: "",
   });
+
+  const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
 
   const [accountForm, setAccountForm] = useState({
     full_name: "",
@@ -339,7 +342,37 @@ export default function AdminPage() {
     }
   }
 
-  async function addTeacher() {
+  function resetTeacherForm(message?: string, color?: string) {
+    setTeacherForm({
+      full_name: "",
+      username: "",
+      password: "",
+    });
+    setEditingTeacherId(null);
+
+    if (message) {
+      setStatusMessage(message);
+      setStatusColor(color || "#16a34a");
+    }
+  }
+
+  function editTeacher(teacher: TeacherRow) {
+    setEditingTeacherId(teacher.id);
+    setTeacherForm({
+      full_name: teacher.full_name,
+      username: teacher.username,
+      password: teacher.password,
+    });
+
+    setStatusMessage("Teacher data loaded. You can now update this account.");
+    setStatusColor("#7c3aed");
+  }
+
+  function cancelEditTeacher() {
+    resetTeacherForm("Edit cancelled.", "#64748b");
+  }
+
+  async function saveTeacher() {
     if (
       teacherForm.full_name.trim() === "" ||
       teacherForm.username.trim() === "" ||
@@ -350,28 +383,41 @@ export default function AdminPage() {
       return;
     }
 
-    const { error } = await supabase.from("teachers").insert([
-      {
-        full_name: teacherForm.full_name.trim(),
-        username: teacherForm.username.trim(),
-        password: teacherForm.password.trim(),
-      },
-    ]);
+    if (editingTeacherId) {
+      const { error } = await supabase
+        .from("teachers")
+        .update({
+          full_name: teacherForm.full_name.trim(),
+          username: teacherForm.username.trim(),
+          password: teacherForm.password.trim(),
+        })
+        .eq("id", editingTeacherId);
 
-    if (error) {
-      setStatusMessage(error.message);
-      setStatusColor("#dc2626");
-      return;
+      if (error) {
+        setStatusMessage(error.message);
+        setStatusColor("#dc2626");
+        return;
+      }
+
+      resetTeacherForm("Teacher account updated successfully.", "#16a34a");
+    } else {
+      const { error } = await supabase.from("teachers").insert([
+        {
+          full_name: teacherForm.full_name.trim(),
+          username: teacherForm.username.trim(),
+          password: teacherForm.password.trim(),
+        },
+      ]);
+
+      if (error) {
+        setStatusMessage(error.message);
+        setStatusColor("#dc2626");
+        return;
+      }
+
+      resetTeacherForm("Teacher account added successfully.", "#16a34a");
     }
 
-    setTeacherForm({
-      full_name: "",
-      username: "",
-      password: "",
-    });
-
-    setStatusMessage("Teacher account added successfully.");
-    setStatusColor("#16a34a");
     await loadTeachers();
   }
 
@@ -387,8 +433,13 @@ export default function AdminPage() {
       return;
     }
 
-    setStatusMessage("Teacher deleted successfully.");
-    setStatusColor("#16a34a");
+    if (editingTeacherId === id) {
+      resetTeacherForm("Deleted teacher account that was being edited.", "#dc2626");
+    } else {
+      setStatusMessage("Teacher deleted successfully.");
+      setStatusColor("#16a34a");
+    }
+
     await loadAllData();
   }
 
@@ -503,6 +554,16 @@ export default function AdminPage() {
     cursor: "pointer",
   };
 
+  const neutralButton: React.CSSProperties = {
+    border: "1px solid #cbd5e1",
+    background: "#fff",
+    color: "#0f172a",
+    padding: "12px 16px",
+    borderRadius: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  };
+
   const pageColumns = isTabletOrBelow
     ? "1fr"
     : isSmallLaptop
@@ -605,17 +666,6 @@ export default function AdminPage() {
               >
                 Admin Panel
               </h1>
-              <p
-                style={{
-                  margin: "4px 0 0 0",
-                  color: "#64748b",
-                  fontSize: isPhone ? 13 : 14,
-                  lineHeight: 1.4,
-                  wordBreak: "break-word",
-                }}
-              >
-                ALITA system maintenance dashboard
-              </p>
             </div>
           </div>
 
@@ -838,7 +888,7 @@ export default function AdminPage() {
           {activeTab === "teachers" && (
             <SectionCard
               title="Teacher Account Management"
-              subtitle="Create and delete teacher accounts."
+              subtitle="Create and manage teacher accounts just like editing students."
               isTabletOrBelow={isTabletOrBelow}
             >
               <div
@@ -878,11 +928,20 @@ export default function AdminPage() {
                 }}
               >
                 <button
-                  onClick={addTeacher}
+                  onClick={saveTeacher}
                   style={{ ...primaryButton, width: isPhone ? "100%" : "auto" }}
                 >
-                  Add Teacher
+                  {editingTeacherId ? "Update Teacher" : "Add Teacher"}
                 </button>
+
+                {editingTeacherId && (
+                  <button
+                    onClick={cancelEditTeacher}
+                    style={{ ...neutralButton, width: isPhone ? "100%" : "auto" }}
+                  >
+                    Cancel Edit
+                  </button>
+                )}
 
                 {!!statusMessage && (
                   <p style={{ margin: 0, fontWeight: 700, color: statusColor, wordBreak: "break-word" }}>
@@ -916,6 +975,10 @@ export default function AdminPage() {
                               color: "#334155",
                               borderBottom: "1px solid #e9d5ff",
                               whiteSpace: "nowrap",
+                              position: "sticky",
+                              top: 0,
+                              background: "#faf5ff",
+                              zIndex: 2,
                             }}
                           >
                             {head}
@@ -923,6 +986,7 @@ export default function AdminPage() {
                         ))}
                       </tr>
                     </thead>
+
                     <tbody>
                       {teachers.map((teacher, index) => (
                         <tr key={teacher.id} style={{ background: index % 2 === 0 ? "#fff" : "#fcfcff" }}>
@@ -936,12 +1000,18 @@ export default function AdminPage() {
                             {teacher.password}
                           </td>
                           <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                            <button onClick={() => deleteTeacher(teacher.id)} style={dangerButton}>
-                              Delete
-                            </button>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                              <button onClick={() => editTeacher(teacher)} style={primaryButton}>
+                                Edit
+                              </button>
+                              <button onClick={() => deleteTeacher(teacher.id)} style={dangerButton}>
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
+
                       {teachers.length === 0 && (
                         <tr>
                           <td
@@ -967,83 +1037,100 @@ export default function AdminPage() {
           {activeTab === "students" && (
             <SectionCard
               title="Student Accounts"
-              subtitle="View and delete all students in the system."
+              subtitle="View and delete student accounts for maintenance."
               isTabletOrBelow={isTabletOrBelow}
             >
-              <ScrollTable>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "separate",
-                    borderSpacing: 0,
-                    minWidth: 900,
-                    border: "1px solid #e9d5ff",
-                    borderRadius: 14,
-                    overflow: "hidden",
-                  }}
-                >
-                  <thead style={{ background: "#faf5ff" }}>
-                    <tr>
-                      {["Name", "Username", "Grade", "Section", "Teacher ID", "Actions"].map((head) => (
-                        <th
-                          key={head}
-                          style={{
-                            padding: "14px 12px",
-                            textAlign: "left",
-                            fontSize: 14,
-                            color: "#334155",
-                            borderBottom: "1px solid #e9d5ff",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {head}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {students.map((student, index) => (
-                      <tr key={student.id} style={{ background: index % 2 === 0 ? "#fff" : "#fcfcff" }}>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9", fontWeight: 600 }}>
-                          {student.full_name}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          {student.username}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          {student.grade_level}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          {student.section}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          {student.teacher_id}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          <button onClick={() => deleteStudent(student.id)} style={dangerButton}>
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {students.length === 0 && (
+              <div
+                style={{
+                  maxHeight: "500px",
+                  overflowY: "auto",
+                  borderRadius: 14,
+                }}
+              >
+                <ScrollTable>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "separate",
+                      borderSpacing: 0,
+                      minWidth: 950,
+                      border: "1px solid #e9d5ff",
+                      borderRadius: 14,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <thead style={{ background: "#faf5ff" }}>
                       <tr>
-                        <td
-                          colSpan={6}
-                          style={{
-                            padding: 24,
-                            textAlign: "center",
-                            color: "#64748b",
-                            fontWeight: 600,
-                          }}
-                        >
-                          No students yet.
-                        </td>
+                        {["Name", "Username", "Password", "Grade", "Section", "Teacher ID", "Actions"].map((head) => (
+                          <th
+                            key={head}
+                            style={{
+                              padding: "14px 12px",
+                              textAlign: "left",
+                              fontSize: 14,
+                              color: "#334155",
+                              borderBottom: "1px solid #e9d5ff",
+                              whiteSpace: "nowrap",
+                              position: "sticky",
+                              top: 0,
+                              background: "#faf5ff",
+                              zIndex: 2,
+                            }}
+                          >
+                            {head}
+                          </th>
+                        ))}
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </ScrollTable>
+                    </thead>
+
+                    <tbody>
+                      {students.map((student, index) => (
+                        <tr key={student.id} style={{ background: index % 2 === 0 ? "#fff" : "#fcfcff" }}>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9", fontWeight: 600 }}>
+                            {student.full_name}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            {student.username}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            {student.password || "-"}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            {student.grade_level}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            {student.section}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            {student.teacher_id}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            <button onClick={() => deleteStudent(student.id)} style={dangerButton}>
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {students.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            style={{
+                              padding: 24,
+                              textAlign: "center",
+                              color: "#64748b",
+                              fontWeight: 600,
+                            }}
+                          >
+                            No students yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </ScrollTable>
+              </div>
             </SectionCard>
           )}
 
@@ -1053,83 +1140,97 @@ export default function AdminPage() {
               subtitle="View and delete quizzes for maintenance."
               isTabletOrBelow={isTabletOrBelow}
             >
-              <ScrollTable>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "separate",
-                    borderSpacing: 0,
-                    minWidth: 1000,
-                    border: "1px solid #e9d5ff",
-                    borderRadius: 14,
-                    overflow: "hidden",
-                  }}
-                >
-                  <thead style={{ background: "#faf5ff" }}>
-                    <tr>
-                      {["Title", "Subject", "Grade", "Type", "Status", "Teacher ID", "Actions"].map((head) => (
-                        <th
-                          key={head}
-                          style={{
-                            padding: "14px 12px",
-                            textAlign: "left",
-                            fontSize: 14,
-                            color: "#334155",
-                            borderBottom: "1px solid #e9d5ff",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {head}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {quizzes.map((quiz, index) => (
-                      <tr key={quiz.id} style={{ background: index % 2 === 0 ? "#fff" : "#fcfcff" }}>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9", fontWeight: 600 }}>
-                          {quiz.title}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          {quiz.subject}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          {quiz.grade_level}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          {quiz.quiz_type}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          {quiz.status}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          {quiz.teacher_id}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
-                          <button onClick={() => deleteQuiz(quiz.id)} style={dangerButton}>
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {quizzes.length === 0 && (
+              <div
+                style={{
+                  maxHeight: "500px",
+                  overflowY: "auto",
+                  borderRadius: 14,
+                }}
+              >
+                <ScrollTable>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "separate",
+                      borderSpacing: 0,
+                      minWidth: 1000,
+                      border: "1px solid #e9d5ff",
+                      borderRadius: 14,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <thead style={{ background: "#faf5ff" }}>
                       <tr>
-                        <td
-                          colSpan={7}
-                          style={{
-                            padding: 24,
-                            textAlign: "center",
-                            color: "#64748b",
-                            fontWeight: 600,
-                          }}
-                        >
-                          No quizzes yet.
-                        </td>
+                        {["Title", "Subject", "Grade", "Type", "Status", "Teacher ID", "Actions"].map((head) => (
+                          <th
+                            key={head}
+                            style={{
+                              padding: "14px 12px",
+                              textAlign: "left",
+                              fontSize: 14,
+                              color: "#334155",
+                              borderBottom: "1px solid #e9d5ff",
+                              whiteSpace: "nowrap",
+                              position: "sticky",
+                              top: 0,
+                              background: "#faf5ff",
+                              zIndex: 2,
+                            }}
+                          >
+                            {head}
+                          </th>
+                        ))}
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </ScrollTable>
+                    </thead>
+
+                    <tbody>
+                      {quizzes.map((quiz, index) => (
+                        <tr key={quiz.id} style={{ background: index % 2 === 0 ? "#fff" : "#fcfcff" }}>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9", fontWeight: 600 }}>
+                            {quiz.title}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            {quiz.subject}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            {quiz.grade_level}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            {quiz.quiz_type}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            {quiz.status}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            {quiz.teacher_id}
+                          </td>
+                          <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                            <button onClick={() => deleteQuiz(quiz.id)} style={dangerButton}>
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {quizzes.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            style={{
+                              padding: 24,
+                              textAlign: "center",
+                              color: "#64748b",
+                              fontWeight: 600,
+                            }}
+                          >
+                            No quizzes yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </ScrollTable>
+              </div>
             </SectionCard>
           )}
         </main>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import * as XLSX from "xlsx";
 
 type Student = {
   id: string;
@@ -31,6 +32,16 @@ type TeacherQuestion = {
   choice_c: string;
   choice_d: string;
   correct_answer: string;
+};
+
+type BulkStudentRow = {
+  full_name: string;
+  username: string;
+  password: string;
+  grade_level: string;
+  section: string;
+  age?: number | null;
+  guardian_name?: string;
 };
 
 type ResultRow = {
@@ -84,6 +95,83 @@ type StudentProgressRow = {
   completed: boolean;
   stars: number;
 };
+
+const BULK_TEMPLATE_HEADERS = [
+  "full_name",
+  "username",
+  "password",
+  "grade_level",
+  "section",
+  "age",
+  "guardian_name",
+];
+
+function normalizeHeader(value: string) {
+  return value.toLowerCase().trim().replace(/\s+/g, "_");
+}
+
+function normalizeCell(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+function normalizeGradeValue(value: unknown) {
+  const raw = normalizeCell(value).toLowerCase();
+  if (raw === "3" || raw === "grade 3" || raw === "g3" || raw === "grade3") return "Grade 3";
+  if (raw === "4" || raw === "grade 4" || raw === "g4" || raw === "grade4") return "Grade 4";
+  if (raw === "5" || raw === "grade 5" || raw === "g5" || raw === "grade5") return "Grade 5";
+  return normalizeCell(value);
+}
+
+function parseBulkStudentRow(
+  row: Record<string, unknown>,
+  index: number
+): { data?: BulkStudentRow; error?: string } {
+  const normalizedRow = Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [normalizeHeader(key), value])
+  ) as Record<string, unknown>;
+
+  const full_name = normalizeCell(
+    normalizedRow.full_name ?? normalizedRow.name ?? normalizedRow.student_name
+  );
+  const username = normalizeCell(normalizedRow.username);
+  const password = normalizeCell(normalizedRow.password);
+  const grade_level = normalizeGradeValue(
+    normalizedRow.grade_level ?? normalizedRow.grade
+  );
+  const section = normalizeCell(normalizedRow.section);
+  const guardian_name = normalizeCell(
+    normalizedRow.guardian_name ?? normalizedRow.guardian
+  );
+
+  const ageRaw = normalizeCell(normalizedRow.age);
+  const age = ageRaw ? Number(ageRaw) : null;
+
+  if (!full_name) return { error: `Row ${index + 2}: full_name is required.` };
+  if (!username) return { error: `Row ${index + 2}: username is required.` };
+  if (!password) return { error: `Row ${index + 2}: password is required.` };
+  if (!grade_level) return { error: `Row ${index + 2}: grade_level is required.` };
+  if (!section) return { error: `Row ${index + 2}: section is required.` };
+
+  if (!["Grade 3", "Grade 4", "Grade 5"].includes(grade_level)) {
+    return { error: `Row ${index + 2}: grade_level must be Grade 3, Grade 4, or Grade 5.` };
+  }
+
+  if (ageRaw && Number.isNaN(age)) {
+    return { error: `Row ${index + 2}: age must be a number if provided.` };
+  }
+
+  return {
+    data: {
+      full_name,
+      username,
+      password,
+      grade_level,
+      section,
+      age,
+      guardian_name,
+    },
+  };
+}
 
 function SectionCard({
   title,
@@ -218,6 +306,10 @@ export default function TeacherPage() {
 
   const [statusMessage, setStatusMessage] = useState("");
   const [statusColor, setStatusColor] = useState("#16a34a");
+  const [bulkFileName, setBulkFileName] = useState("");
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkStatusMessage, setBulkStatusMessage] = useState("");
+  const [bulkStatusColor, setBulkStatusColor] = useState("#16a34a");
   const [activeTab, setActiveTab] = useState<"students" | "specialQuiz" | "progress">("students");
 
   const [quizTitle, setQuizTitle] = useState("");
@@ -647,6 +739,197 @@ export default function TeacherPage() {
     resetStudentForm("Edit cancelled.", "#64748b");
   }
 
+  function downloadStudentTemplate() {
+    const workbook = XLSX.utils.book_new();
+
+    const templateSheet = XLSX.utils.json_to_sheet([
+      {
+        full_name: "Juan Dela Cruz",
+        username: "juan_grade3_a",
+        password: "1234",
+        grade_level: "Grade 3",
+        section: "Section A",
+        age: 9,
+        guardian_name: "Maria Dela Cruz",
+      },
+      {
+        full_name: "Ana Santos",
+        username: "ana_grade3_a",
+        password: "1234",
+        grade_level: "Grade 3",
+        section: "Section A",
+        age: 8,
+        guardian_name: "Ramon Santos",
+      },
+      {
+        full_name: "Leo Garcia",
+        username: "leo_grade4_b",
+        password: "1234",
+        grade_level: "Grade 4",
+        section: "Section B",
+        age: 10,
+        guardian_name: "Liza Garcia",
+      },
+    ]);
+
+    templateSheet["!cols"] = [
+      { wch: 24 },
+      { wch: 20 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 10 },
+      { wch: 24 },
+    ];
+
+    const instructionsSheet = XLSX.utils.aoa_to_sheet([
+      ["Student Bulk Upload Template"],
+      [""],
+      ["Required columns", "full_name, username, password, grade_level, section"],
+      ["Optional columns", "age, guardian_name"],
+      ["Allowed grade_level values", "Grade 3, Grade 4, Grade 5"],
+      [""],
+      ["Notes"],
+      ["1", "One row = one student account"],
+      ["2", "Do not change the header names"],
+      ["3", "Usernames must be unique"],
+      ["4", "Single student edit/add still works for corrections after upload"],
+    ]);
+
+    instructionsSheet["!cols"] = [{ wch: 24 }, { wch: 70 }];
+
+    XLSX.utils.book_append_sheet(workbook, templateSheet, "Students_Template");
+    XLSX.utils.book_append_sheet(workbook, instructionsSheet, "Instructions");
+    XLSX.writeFile(workbook, "student_bulk_upload_template.xlsx");
+  }
+
+  async function handleBulkStudentUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    setBulkFileName(file.name);
+    setBulkStatusMessage("");
+    setBulkStatusColor("#16a34a");
+    setBulkUploading(true);
+
+    try {
+      const teacherId = localStorage.getItem("teacherId");
+
+      if (!teacherId || teacherId === "null" || teacherId === "undefined") {
+        setBulkStatusMessage("Teacher session not found. Please log in again.");
+        setBulkStatusColor("#dc2626");
+        setBulkUploading(false);
+        router.push("/login");
+        return;
+      }
+
+      const fileBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(fileBuffer, { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+
+      if (!firstSheetName) {
+        throw new Error("The Excel file has no worksheet.");
+      }
+
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+        defval: "",
+      });
+
+      if (rawRows.length === 0) {
+        throw new Error("The Excel file is empty.");
+      }
+
+      const parsedRows: BulkStudentRow[] = [];
+      const rowErrors: string[] = [];
+      const seenUsernames = new Set<string>();
+
+      rawRows.forEach((row, index) => {
+        const { data, error } = parseBulkStudentRow(row, index);
+
+        if (error) {
+          rowErrors.push(error);
+          return;
+        }
+
+        if (!data) return;
+
+        const usernameKey = data.username.toLowerCase();
+
+        if (seenUsernames.has(usernameKey)) {
+          rowErrors.push(`Row ${index + 2}: duplicate username "${data.username}" found in file.`);
+          return;
+        }
+
+        seenUsernames.add(usernameKey);
+        parsedRows.push(data);
+      });
+
+      if (rowErrors.length > 0) {
+        setBulkStatusMessage(
+          `Upload stopped. Please fix these issues: ${rowErrors.slice(0, 5).join(" | ")}${rowErrors.length > 5 ? " | ..." : ""
+          }`
+        );
+        setBulkStatusColor("#dc2626");
+        setBulkUploading(false);
+        return;
+      }
+
+      const usernames = parsedRows.map((row) => row.username);
+
+      const { data: existingStudents, error: existingStudentsError } = await supabase
+        .from("students")
+        .select("username")
+        .in("username", usernames);
+
+      if (existingStudentsError) {
+        throw existingStudentsError;
+      }
+
+      if ((existingStudents || []).length > 0) {
+        const duplicateUsernames = (existingStudents || []).map((student) => student.username).join(", ");
+        setBulkStatusMessage(`Upload stopped. These usernames already exist: ${duplicateUsernames}`);
+        setBulkStatusColor("#dc2626");
+        setBulkUploading(false);
+        return;
+      }
+
+      const payload = parsedRows.map((row) => ({
+        teacher_id: teacherId,
+        full_name: row.full_name,
+        username: row.username,
+        password: row.password,
+        grade_level: row.grade_level,
+        section: row.section,
+        age: row.age,
+        guardian_name: row.guardian_name || null,
+        avatar: "🧒",
+      }));
+
+      const chunkSize = 100;
+      for (let index = 0; index < payload.length; index += chunkSize) {
+        const chunk = payload.slice(index, index + chunkSize);
+        const { error } = await supabase.from("students").insert(chunk);
+
+        if (error) {
+          throw error;
+        }
+      }
+
+      setBulkStatusMessage(`Bulk upload successful. ${payload.length} student accounts created.`);
+      setBulkStatusColor("#16a34a");
+      await loadStudents();
+      await loadProgressData();
+    } catch (error: any) {
+      setBulkStatusMessage(error.message || "Failed to upload student accounts.");
+      setBulkStatusColor("#dc2626");
+    } finally {
+      setBulkUploading(false);
+    }
+  }
+
   async function createSpecialQuiz() {
     if (quizTitle.trim() === "") {
       alert("Please enter a quiz title.");
@@ -995,8 +1278,8 @@ export default function TeacherPage() {
   const pageColumns = isTabletOrBelow
     ? "1fr"
     : isSmallLaptop
-    ? "220px minmax(0, 1fr)"
-    : "260px minmax(0, 1fr)";
+      ? "220px minmax(0, 1fr)"
+      : "260px minmax(0, 1fr)";
 
   return (
     <div
@@ -1045,7 +1328,7 @@ export default function TeacherPage() {
                 flexShrink: 0,
               }}
             >
-              A
+              T
             </div>
             <div style={{ minWidth: 0 }}>
               <h1
@@ -1056,19 +1339,9 @@ export default function TeacherPage() {
                   wordBreak: "break-word",
                 }}
               >
-                Teacher Admin Panel
+                Teacher Panel
               </h1>
-              <p
-                style={{
-                  margin: "4px 0 0 0",
-                  color: "#64748b",
-                  fontSize: isPhone ? 13 : 14,
-                  lineHeight: 1.4,
-                  wordBreak: "break-word",
-                }}
-              >
-                Simple responsive dashboard
-              </p>
+
             </div>
           </div>
 
@@ -1080,20 +1353,6 @@ export default function TeacherPage() {
               flexShrink: 0,
             }}
           >
-            <div
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: "50%",
-                background: "#e2e8f0",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 20,
-              }}
-            >
-              👩‍🏫
-            </div>
 
             <button
               onClick={logout}
@@ -1170,7 +1429,7 @@ export default function TeacherPage() {
           {activeTab === "students" && (
             <SectionCard
               title="Student Account Management"
-              subtitle="Create and manage student accounts assigned to your class."
+              subtitle="Create students one by one, edit missed details, or upload many accounts at once from Excel."
               isTabletOrBelow={isTabletOrBelow}
             >
               <div
@@ -1218,8 +1477,92 @@ export default function TeacherPage() {
                 )}
               </div>
 
+              <div
+                style={{
+                  marginTop: 18,
+                  border: "1px dashed #cbd5e1",
+                  borderRadius: 16,
+                  padding: isTabletOrBelow ? 14 : 18,
+                  background: "#f8fafc",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: isTabletOrBelow ? "column" : "row",
+                    alignItems: isTabletOrBelow ? "stretch" : "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Bulk Create Student Accounts</h3>
+                    <p
+                      style={{
+                        margin: "8px 0 0 0",
+                        color: "#64748b",
+                        fontWeight: 500,
+                        lineHeight: 1.5,
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      Upload one Excel file with the columns: {BULK_TEMPLATE_HEADERS.join(", ")}.
+                      The single student form above stays available for quick corrections and manual edits.
+                    </p>
+                  </div>
+
+                  <button onClick={downloadStudentTemplate} style={{ ...neutralButton, width: isTabletOrBelow ? "100%" : "auto" }}>
+                    Download Sample Excel
+                  </button>
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 14,
+                    display: "grid",
+                    gridTemplateColumns: isTabletOrBelow ? "1fr" : "minmax(0, 1fr) auto",
+                    gap: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleBulkStudentUpload}
+                    style={{ ...inputStyle, padding: "10px 12px" }}
+                  />
+
+                  <div
+                    style={{
+                      border: "1px solid #dbe3ef",
+                      background: "#fff",
+                      borderRadius: 12,
+                      padding: "12px 14px",
+                      fontWeight: 700,
+                      color: bulkUploading ? "#f59e0b" : "#334155",
+                      textAlign: isTabletOrBelow ? "left" : "center",
+                    }}
+                  >
+                    {bulkUploading ? "Uploading..." : bulkFileName ? `Last file: ${bulkFileName}` : "Ready for upload"}
+                  </div>
+                </div>
+
+                {!!bulkStatusMessage && (
+                  <p style={{ margin: "12px 0 0 0", fontWeight: 700, color: bulkStatusColor, wordBreak: "break-word" }}>
+                    {bulkStatusMessage}
+                  </p>
+                )}
+              </div>
+
               <div style={{ marginTop: 20 }}>
-                <ScrollTable>
+                <div
+                  style={{
+                    maxHeight: 400,
+                    overflowY: "auto",
+                    border: "1px solid #dbe3ef",
+                    borderRadius: 14,
+                  }}
+                >
                   <table
                     style={{
                       width: "100%",
@@ -1281,7 +1624,7 @@ export default function TeacherPage() {
                       )}
                     </tbody>
                   </table>
-                </ScrollTable>
+                </div>
               </div>
             </SectionCard>
           )}
@@ -1365,8 +1708,8 @@ export default function TeacherPage() {
                                   quiz.status === "published"
                                     ? "#16a34a"
                                     : quiz.status === "archived"
-                                    ? "#64748b"
-                                    : "#f59e0b",
+                                      ? "#64748b"
+                                      : "#f59e0b",
                               }}
                             >
                               {quiz.status}
@@ -1748,7 +2091,15 @@ export default function TeacherPage() {
                 </SectionCard>
 
                 <SectionCard title="Recent Quiz Attempts" subtitle="Latest quiz activity from your students." isTabletOrBelow={isTabletOrBelow}>
-                  <div style={{ display: "grid", gap: 12 }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 10,
+                      maxHeight: 520,
+                      overflowY: "auto",
+                      paddingRight: 6,
+                    }}
+                  >
                     {recentAttempts.map((item) => (
                       <div
                         key={item.id}
@@ -1778,16 +2129,16 @@ export default function TeacherPage() {
                           </div>
                         </div>
 
-                        <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 10 }}>
-                          <div style={{ background: "#fff", border: "1px solid #dbe3ef", borderRadius: 12, padding: "10px 12px" }}>
+                        <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 10 }}>
+                          <div style={{ background: "#fff", border: "1px solid #dbe3ef", borderRadius: 12, padding: "8px 10px" }}>
                             <p style={{ margin: 0, fontSize: 12, color: "#64748b", fontWeight: 700 }}>Score</p>
                             <p style={{ margin: "6px 0 0 0", fontWeight: 800 }}>{item.score}</p>
                           </div>
-                          <div style={{ background: "#fff", border: "1px solid #dbe3ef", borderRadius: 12, padding: "10px 12px" }}>
+                          <div style={{ background: "#fff", border: "1px solid #dbe3ef", borderRadius: 12, padding: "8px 10px" }}>
                             <p style={{ margin: 0, fontSize: 12, color: "#64748b", fontWeight: 700 }}>Stars</p>
                             <p style={{ margin: "6px 0 0 0", fontWeight: 800 }}>{item.stars} ⭐</p>
                           </div>
-                          <div style={{ background: "#fff", border: "1px solid #dbe3ef", borderRadius: 12, padding: "10px 12px" }}>
+                          <div style={{ background: "#fff", border: "1px solid #dbe3ef", borderRadius: 12, padding: "8px 10px" }}>
                             <p style={{ margin: 0, fontSize: 12, color: "#64748b", fontWeight: 700 }}>Attempts</p>
                             <p style={{ margin: "6px 0 0 0", fontWeight: 800 }}>{item.attempts}</p>
                           </div>

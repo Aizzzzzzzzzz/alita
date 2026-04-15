@@ -13,10 +13,6 @@ type TopBarProps = {
 const DEFAULT_NAME = "Player";
 const DEFAULT_PORTRAIT = "/characters/portraits/warrior.png";
 
-/**
- * PortraitCircle
- * Displays the student's portrait inside a circular frame.
- */
 function PortraitCircle({
   src,
   alt,
@@ -39,16 +35,18 @@ function PortraitCircle({
         src={safeSrc}
         alt={alt}
         className={`object-cover ${imgClassName}`}
-        style={{ imageRendering: "pixelated" }}
+        style={{
+          imageRendering: "pixelated",
+          WebkitTapHighlightColor: "transparent",
+          userSelect: "none",
+          
+        }}
+        draggable={false}
       />
     </div>
   );
 }
 
-/**
- * TopBar
- * Main navigation bar for the student pages.
- */
 export default function TopBar({
   studentName,
   studentPortrait,
@@ -129,19 +127,19 @@ export default function TopBar({
   }, []);
 
   const navBase =
-    "inline-flex h-[56px] items-center justify-center rounded-[18px] border-[4px] border-[#5b341c] px-5 font-black text-[#5b341c]";
+    "inline-flex h-[56px] items-center justify-center rounded-[18px] border-[4px] border-[#5b341c] px-5 font-black text-[#5b341c] no-underline outline-none select-none";
 
   const navBtn =
-    `${navBase} bg-[#f6d28b] shadow-[4px_4px_0_#8a5a35] transition-colors duration-150 hover:bg-[#ffe7a8]`;
+    `${navBase} bg-[#f6d28b] shadow-[4px_4px_0_#8a5a35] transition-colors duration-150 hover:bg-[#ffe7a8] focus:outline-none active:outline-none`;
 
   const navBtnActive =
-    `${navBase} bg-[#ffe7a8] shadow-[4px_4px_0_#8a5a35]`;
+    `${navBase} bg-[#ffe7a8] shadow-[4px_4px_0_#8a5a35] focus:outline-none active:outline-none`;
 
   const mobileBtn =
-    "block w-full rounded-[16px] border-[4px] border-[#5b341c] px-4 py-3 text-center font-black text-[#5b341c] bg-[#f6d28b] shadow-[4px_4px_0_#8a5a35] hover:bg-[#ffe7a8]";
+    "block w-full rounded-[16px] border-[4px] border-[#5b341c] px-4 py-3 text-center font-black text-[#5b341c] bg-[#f6d28b] shadow-[4px_4px_0_#8a5a35] hover:bg-[#ffe7a8] no-underline outline-none select-none focus:outline-none active:outline-none";
 
   const mobileBtnActive =
-    "block w-full rounded-[16px] border-[4px] border-[#5b341c] px-4 py-3 text-center font-black text-[#5b341c] bg-[#ffe7a8] shadow-[4px_4px_0_#8a5a35]";
+    "block w-full rounded-[16px] border-[4px] border-[#5b341c] px-4 py-3 text-center font-black text-[#5b341c] bg-[#ffe7a8] shadow-[4px_4px_0_#8a5a35] no-underline outline-none select-none focus:outline-none active:outline-none";
 
   const navItems = [
     { href: "/", label: "HOME" },
@@ -158,7 +156,13 @@ export default function TopBar({
             <img
               src="/images/final-logo.png"
               alt="ALITA Logo"
-              className="h-16 w-16 object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,0.35)] lg:h-20 lg:w-20"
+              className="h-16 w-16 object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,0.35)] lg:h-20 lg:w-20 select-none"
+              style={{
+                WebkitTapHighlightColor: "transparent",
+                userSelect: "none",
+                
+              }}
+              draggable={false}
             />
 
             <div className="min-w-0">
@@ -177,6 +181,10 @@ export default function TopBar({
                 key={item.href}
                 href={item.href}
                 className={pathname === item.href ? navBtnActive : navBtn}
+                style={{
+                  WebkitTapHighlightColor: "transparent",
+                  outline: "none",
+                }}
               >
                 {item.label}
               </Link>
@@ -187,7 +195,13 @@ export default function TopBar({
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-3 rounded-[18px] border-[4px] border-[#5b341c] bg-[#ffe7a8] px-3 py-2 font-black text-[#5b341c] shadow-[4px_4px_0_#8a5a35] lg:px-4"
+                className="flex items-center gap-3 rounded-[18px] border-[4px] border-[#5b341c] bg-[#ffe7a8] px-3 py-2 font-black text-[#5b341c] shadow-[4px_4px_0_#8a5a35] lg:px-4 focus:outline-none active:outline-none select-none"
+                style={{
+                  WebkitTapHighlightColor: "transparent",
+                  outline: "none",
+                  WebkitAppearance: "none",
+                  appearance: "none",
+                }}
               >
                 <PortraitCircle
                   src={displayPortrait}
@@ -207,7 +221,13 @@ export default function TopBar({
                       setMenuOpen(false);
                       router.push("/profile");
                     }}
-                    className="block w-full border-b-[3px] border-[#d8b57f] px-4 py-3 text-left font-black text-[#5b341c] hover:bg-[#f7e4b0]"
+                    className="block w-full border-b-[3px] border-[#d8b57f] px-4 py-3 text-left font-black text-[#5b341c] hover:bg-[#f7e4b0] focus:outline-none active:outline-none"
+                    style={{
+                      WebkitTapHighlightColor: "transparent",
+                      outline: "none",
+                      WebkitAppearance: "none",
+                      appearance: "none",
+                    }}
                   >
                     HERO PROFILE
                   </button>
@@ -217,7 +237,13 @@ export default function TopBar({
                       setMenuOpen(false);
                       onLogout();
                     }}
-                    className="block w-full px-4 py-3 text-left font-black text-red-600 hover:bg-[#f7e4b0]"
+                    className="block w-full px-4 py-3 text-left font-black text-red-600 hover:bg-[#f7e4b0] focus:outline-none active:outline-none"
+                    style={{
+                      WebkitTapHighlightColor: "transparent",
+                      outline: "none",
+                      WebkitAppearance: "none",
+                      appearance: "none",
+                    }}
                   >
                     LOGOUT
                   </button>
@@ -228,7 +254,14 @@ export default function TopBar({
             <div className="relative lg:hidden" ref={mobileNavRef}>
               <button
                 onClick={() => setNavOpen(!navOpen)}
-                className="flex h-12 w-12 items-center justify-center rounded-[16px] border-[4px] border-[#5b341c] bg-[#f6d28b] shadow-[4px_4px_0_#8a5a35]"
+                className="flex h-12 w-12 items-center justify-center rounded-[16px] border-[4px] border-[#5b341c] bg-[#f6d28b] text-[#5b341c] shadow-[4px_4px_0_#8a5a35] focus:outline-none active:outline-none select-none"
+                style={{
+                  WebkitTapHighlightColor: "transparent",
+                  outline: "none",
+                  WebkitAppearance: "none",
+                  appearance: "none",
+                  userSelect: "none",
+                }}
               >
                 ☰
               </button>
@@ -243,6 +276,10 @@ export default function TopBar({
                         className={
                           pathname === item.href ? mobileBtnActive : mobileBtn
                         }
+                        style={{
+                          WebkitTapHighlightColor: "transparent",
+                          outline: "none",
+                        }}
                         onClick={() => setNavOpen(false)}
                       >
                         {item.label}

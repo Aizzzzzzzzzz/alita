@@ -59,12 +59,12 @@ export default function AssessmentHome({
 
             <div>
               <div className="mb-2 flex items-center gap-2">
-                <p className="inline-block rounded-[12px] border-4 border-[#355e2b] bg-[#bfe88b] px-3 py-1 text-sm font-black text-[#213b19]">
+                <p className="inline-block rounded-[12px] border-4 border-[#26441d] bg-[#ffee8f] px-3 py-1 text-sm font-black text-[#213b19]">
                   PLAYER READY
                 </p>
-                <span className="animate-sparkle text-xl">✨</span>
+                <span className="animate-sparkle text-xl">⭐</span>
                 <span className="animate-sparkle text-lg" style={{ animationDelay: "0.4s" }}>
-                  ✨
+                  ⭐
                 </span>
               </div>
 
@@ -107,7 +107,7 @@ export default function AssessmentHome({
             fontWeight: 900,
           }}
         >
-          PRE-MADE QUESTS
+          QUESTS
         </button>
 
         <button
