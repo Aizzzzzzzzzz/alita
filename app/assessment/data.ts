@@ -30,7 +30,7 @@ export const quizData: QuizData = {
     {
       question: "What is 5 times 2?",
       choices: ["eight", "nine", "ten", "eleven"],
-      answers: ["ten", "number ten", "the answer is ten", "it is ten", "10"],
+      answers: ["ten", "number ten", "the answer is 10", "it is 10", "10"],
     },
     {
       question: "What is 12 divided by 3?",
