@@ -83,7 +83,7 @@ export default function LoginPage() {
 
           if (nextFailedTries >= 3) {
             const goToForgotPassword = window.confirm(
-              "Forget password?"
+              "Forgot password?"
             );
 
             if (goToForgotPassword) {
@@ -328,8 +328,8 @@ export default function LoginPage() {
               style={{
                 fontSize: "clamp(28px, 5vw, 54px)",
                 lineHeight: 1.1,
-                color: "#ff5ca8",
-                textShadow: "4px 4px 0 #b0356f",
+                color: "#006D5B",
+                textShadow: "4px 4px 0 #013220",
                 letterSpacing: "3px",
                 marginTop: "6px",
               }}
@@ -366,7 +366,6 @@ export default function LoginPage() {
                 lineHeight: 1.6,
               }}
             >
-              One login only for admin, teacher, and student
             </div>
 
             <div style={{ display: "grid", gap: "12px" }}>
@@ -477,8 +476,6 @@ export default function LoginPage() {
               lineHeight: 1.8,
             }}
           >
-            The system will detect automatically if you are admin, teacher, or
-            student
           </div>
         </div>
       </div>
