@@ -17,13 +17,10 @@ import SubjectLevels from "./components/SubjectLevels";
 
 export default function AssessmentPage() {
   const router = useRouter();
-
   const hasAutoReadRef = useRef(false);
   const recognitionRef = useRef<any>(null);
   const latestTranscriptRef = useRef("");
   const isStoppingRef = useRef(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioUrlRef = useRef<string | null>(null);
 
   const [studentName, setStudentName] = useState("Student");
   const [studentAvatar, setStudentAvatar] = useState("🧒");
@@ -203,21 +200,24 @@ export default function AssessmentPage() {
   ]);
 
   useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+
+    const synth = window.speechSynthesis;
+    synth.getVoices();
+
+    const handleVoicesChanged = () => {
+      synth.getVoices();
+    };
+
+    window.speechSynthesis.onvoiceschanged = handleVoicesChanged;
+
     return () => {
       try {
         recognitionRef.current?.stop();
       } catch { }
 
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current = null;
-      }
-
-      if (audioUrlRef.current) {
-        URL.revokeObjectURL(audioUrlRef.current);
-        audioUrlRef.current = null;
-      }
+      synth.cancel();
+      window.speechSynthesis.onvoiceschanged = null;
     };
   }, []);
 
@@ -327,25 +327,12 @@ export default function AssessmentPage() {
     return inserted.id;
   }
 
-  function stopCurrentAudio() {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
-    }
-
-    if (audioUrlRef.current) {
-      URL.revokeObjectURL(audioUrlRef.current);
-      audioUrlRef.current = null;
-    }
-  }
-
   function logout() {
     try {
       recognitionRef.current?.stop();
     } catch { }
 
-    stopCurrentAudio();
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     localStorage.removeItem("alitaUser");
     localStorage.removeItem("studentId");
     localStorage.removeItem("teacherId");
@@ -390,7 +377,8 @@ export default function AssessmentPage() {
 
     recognitionRef.current = null;
     setIsListening(false);
-    stopCurrentAudio();
+
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }
 
   function openSubject(subject: string) {
@@ -416,61 +404,62 @@ export default function AssessmentPage() {
     return 0;
   }
 
-  async function speakText(text: string) {
+  function speakText(text: string) {
     setAiPromptText(text);
 
-    try {
-      stopCurrentAudio();
+    if (!("speechSynthesis" in window)) return;
 
-      const res = await fetch("/api/voice", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text }),
-      });
+    const synth = window.speechSynthesis;
+    synth.cancel();
 
-      if (!res.ok) {
-        const err = await res.json();
-        console.error("VOICE ERROR:", err);
-        return;
+    setTimeout(() => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const isFilipino = selectedSubject === "Filipino";
+
+      utterance.lang = isFilipino ? "fil-PH" : "en-US";
+      utterance.rate = isFilipino ? 0.82 : 0.85;
+      utterance.pitch = isFilipino ? 1 : 1.05;
+      utterance.volume = 1;
+
+      const voices = synth.getVoices();
+
+      const bestVoice =
+        voices.find((voice) =>
+          isFilipino
+            ? voice.lang.toLowerCase().includes("fil")
+            : voice.lang.toLowerCase().includes("en")
+        ) ||
+        voices.find((voice) =>
+          isFilipino
+            ? voice.name.toLowerCase().includes("filip")
+            : voice.name.toLowerCase().includes("english")
+        ) ||
+        voices[0];
+
+      if (bestVoice) {
+        utterance.voice = bestVoice;
       }
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      audioUrlRef.current = url;
-
-      const audio = new Audio(url);
-      audioRef.current = audio;
-
-      audio.onended = () => {
-        if (audioUrlRef.current) {
-          URL.revokeObjectURL(audioUrlRef.current);
-          audioUrlRef.current = null;
-        }
-        audioRef.current = null;
-      };
-
-      await audio.play();
-    } catch (err) {
-      console.error("Voice crash:", err);
-    }
+      synth.speak(utterance);
+    }, 120);
   }
 
   function readQuestionAndChoices() {
     if (!currentQuestion) return;
-    speakText(`${currentQuestion.question}. The choices are: ${currentQuestion.choices.join(", ")}.`);
+    speakText(
+      `${currentQuestion.question} ... The choices are ... ${currentQuestion.choices.join(" ... ")}.`
+    );
   }
 
   function readSpecialQuestionAndChoices() {
     if (!currentSpecialQuestion) return;
     speakText(
-      `${currentSpecialQuestion.question_text}. The choices are: ${[
+      `${currentSpecialQuestion.question_text} ... The choices are ... ${[
         currentSpecialQuestion.choice_a,
         currentSpecialQuestion.choice_b,
         currentSpecialQuestion.choice_c,
         currentSpecialQuestion.choice_d,
-      ].join(", ")}.`
+      ].join(" ... ")}.`
     );
   }
 
@@ -620,7 +609,7 @@ export default function AssessmentPage() {
     setVoiceMessage("Correct answer!");
     setShowResult(true);
     setShowTryAgain(false);
-    speakText("Correct answer. Good job. Next level unlocked.");
+    speakText("Correct answer ... Good job ... Next level unlocked.");
   }
 
   function handleWrongPremadeAnswer(choice: string) {
@@ -631,10 +620,10 @@ export default function AssessmentPage() {
     if (nextWrongAttempts >= 3) {
       setVoiceMessage("You used all 3 attempts.");
       setShowTryAgain(true);
-      speakText("You used all three attempts. Press try again.");
+      speakText("You used all three attempts ... Press try again.");
     } else {
       setVoiceMessage(`Wrong answer. Attempt ${nextWrongAttempts} of 3.`);
-      speakText(`Wrong answer. Attempt ${nextWrongAttempts} of 3.`);
+      speakText(`Wrong answer ... Attempt ${nextWrongAttempts} of 3.`);
     }
   }
 
@@ -642,15 +631,9 @@ export default function AssessmentPage() {
     if (!currentQuestion) return;
 
     const normalizedChoice = normalizeText(choice);
-
-    const isCorrect = currentQuestion.answers.some((accepted) => {
-      const normalizedAccepted = normalizeText(accepted);
-      return (
-        normalizedChoice === normalizedAccepted ||
-        normalizedChoice.includes(normalizedAccepted) ||
-        normalizedAccepted.includes(normalizedChoice)
-      );
-    });
+    const isCorrect = currentQuestion.answers.some(
+      (answer) => normalizeText(answer) === normalizedChoice
+    );
 
     if (isCorrect) await handleCorrectPremadeAnswer(choice);
     else handleWrongPremadeAnswer(choice);
@@ -667,7 +650,7 @@ export default function AssessmentPage() {
     setShowTryAgain(false);
 
     if (nextIndex < specialQuestions.length) {
-      speakText("Correct answer. Next question.");
+      speakText("Correct answer ... Next question.");
       setTimeout(() => {
         setSpecialQuestionIndex(nextIndex);
         setRecognizedChoice("");
@@ -695,7 +678,7 @@ export default function AssessmentPage() {
       }
 
       setEarnedStars(stars);
-      speakText("Special quiz finished. Good job.");
+      speakText("Special quiz finished ... Good job.");
       setShowSpecialResult(true);
     }
   }
@@ -708,10 +691,10 @@ export default function AssessmentPage() {
     if (nextWrongAttempts >= 3) {
       setVoiceMessage("You used all 3 attempts.");
       setShowTryAgain(true);
-      speakText("You used all three attempts. Press try again.");
+      speakText("You used all three attempts ... Press try again.");
     } else {
       setVoiceMessage(`Wrong answer. Attempt ${nextWrongAttempts} of 3.`);
-      speakText(`Wrong answer. Attempt ${nextWrongAttempts} of 3.`);
+      speakText(`Wrong answer ... Attempt ${nextWrongAttempts} of 3.`);
     }
   }
 
@@ -774,7 +757,7 @@ export default function AssessmentPage() {
 
     if (recognitionRef.current || isListening || showTryAgain) return;
 
-    stopCurrentAudio();
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 
     latestTranscriptRef.current = "";
     isStoppingRef.current = false;
@@ -880,7 +863,6 @@ export default function AssessmentPage() {
 
     recognitionRef.current = null;
     setIsListening(false);
-    stopCurrentAudio();
 
     if (viewMode === "premade") readQuestionAndChoices();
     else readSpecialQuestionAndChoices();
@@ -921,7 +903,6 @@ export default function AssessmentPage() {
 
     recognitionRef.current = null;
     setIsListening(false);
-    stopCurrentAudio();
   }
 
   return (
