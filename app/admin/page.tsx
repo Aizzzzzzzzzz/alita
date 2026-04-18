@@ -567,22 +567,22 @@ export default function AdminPage() {
   const pageColumns = isTabletOrBelow
     ? "1fr"
     : isSmallLaptop
-    ? "220px minmax(0, 1fr)"
-    : "260px minmax(0, 1fr)";
+      ? "220px minmax(0, 1fr)"
+      : "260px minmax(0, 1fr)";
 
   const overviewColumns = isPhone
     ? "1fr"
     : isTabletOrBelow
-    ? "1fr 1fr"
-    : "repeat(4, minmax(0, 1fr))";
+      ? "1fr 1fr"
+      : "repeat(4, minmax(0, 1fr))";
 
   const accountColumns = isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))";
 
   const teacherFormColumns = isPhone
     ? "1fr"
     : isTabletOrBelow
-    ? "1fr 1fr"
-    : "repeat(3, minmax(0, 1fr))";
+      ? "1fr 1fr"
+      : "repeat(3, minmax(0, 1fr))";
 
   if (pageLoading) {
     return (
@@ -636,24 +636,18 @@ export default function AdminPage() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-            <div
+            <img
+              src="/images/final-logo.png"
+              alt="ALITA Logo"
               style={{
                 width: 48,
                 height: 48,
-                borderRadius: 14,
-                background: "#7c3aed",
-                color: "#fff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 800,
-                fontSize: 20,
+                borderRadius: 12,
+                objectFit: "cover",
                 boxShadow: "0 10px 20px rgba(124, 58, 237, 0.25)",
                 flexShrink: 0,
               }}
-            >
-              A
-            </div>
+            />
 
             <div style={{ minWidth: 0 }}>
               <h1

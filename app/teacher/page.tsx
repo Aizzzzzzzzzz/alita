@@ -1312,24 +1312,19 @@ export default function TeacherPage() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-            <div
+            <img
+              src="/images/final-logo.png"
+              alt="ALITA Logo"
               style={{
                 width: 48,
                 height: 48,
-                borderRadius: 14,
-                background: "#2563eb",
-                color: "#fff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 800,
-                fontSize: 20,
-                boxShadow: "0 10px 20px rgba(37, 99, 235, 0.25)",
+                borderRadius: 12,
+                objectFit: "cover",
+                boxShadow: "0 10px 20px rgba(124, 58, 237, 0.25)",
                 flexShrink: 0,
               }}
-            >
-              T
-            </div>
+            />
+
             <div style={{ minWidth: 0 }}>
               <h1
                 style={{
@@ -1341,7 +1336,6 @@ export default function TeacherPage() {
               >
                 Teacher Panel
               </h1>
-
             </div>
           </div>
 
