@@ -28,9 +28,9 @@ export const quizData: QuizData = {
       answers: ["six", "number six", "the answer is six", "it is six", "6"],
     },
     {
-      question: "What is 5 times 2?",
-      choices: ["eight", "nine", "ten", "eleven"],
-      answers: ["ten", "number ten", "the answer is 10", "it is 10", "10"],
+      question: "What is 3 times 3?",
+      choices: ["eight", "nine", "fifteen", "eleven"],
+      answers: ["nine", "number nine", "the answer is nine", "it is nine", "9"],
     },
     {
       question: "What is 12 divided by 3?",
@@ -112,8 +112,8 @@ export const quizData: QuizData = {
     },
     {
       question: "Which word is an action?",
-      choices: ["eat", "chair", "blue", "desk"],
-      answers: ["eat", "action eat", "the answer is eat", "it is eat"],
+      choices: ["jump", "chair", "blue", "desk"],
+      answers: ["jump", "action jump", "the answer is jump", "it is jump"],
     },
     {
       question: "Which word is a place?",
@@ -152,8 +152,8 @@ export const quizData: QuizData = {
     },
     {
       question: "Which word is a pronoun?",
-      choices: ["he", "table", "run", "blue"],
-      answers: ["he", "pronoun he", "the answer is he", "it is he"],
+      choices: ["she", "table", "run", "blue"],
+      answers: ["she", "pronoun she", "the answer is she", "it is she"],
     },
     {
       question: "Which word is an adverb?",
@@ -177,8 +177,8 @@ export const quizData: QuizData = {
     },
     {
       question: "Which word shows past tense?",
-      choices: ["walk", "walking", "walked", "walks"],
-      answers: ["walked", "past tense walked", "the answer is walked", "it is walked"],
+      choices: ["goes", "will", "go", "went"],
+      answers: ["went", "past tense went", "the answer is went", "it is went"],
     },
     {
       question: "Which word shows present tense?",
@@ -327,9 +327,9 @@ export const quizData: QuizData = {
       answers: ["rock", "not living rock", "the answer is rock", "it is rock"],
     },
     {
-      question: "Which part of the body helps us see?",
-      choices: ["eyes", "ears", "nose", "hands"],
-      answers: ["eyes", "eyes for seeing", "the answer is eyes", "it is eyes"],
+      question: "Which part of the body helps us speak?",
+      choices: ["eyes", "ears", "nose", "mouth"],
+      answers: ["mouth", "the answer is mouth", "it is mouth"]
     },
     {
       question: "Which part of the body helps us hear?",
